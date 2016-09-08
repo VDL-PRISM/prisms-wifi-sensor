@@ -4,59 +4,21 @@ import os
 import socket
 import time
 
-import Adafruit_BBIO.UART as UART
-from driver.sht_driver import sht21
 import paho.mqtt.client as mqtt
 import serial
 import yaml
 
+from sensors import setup_air_quality, setup_temp_sensor
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-LOGGER = logging.getLogger("air_sensor")
+LOGGER = logging.getLogger("mqtt_sensor")
 
 
-def setup_air_quality(port, baudrate):
-    # Setup UART
-    UART.setup("UART1")
-
-    ser = serial.Serial(port=port, baudrate=baudrate,
-                        parity=serial.PARITY_NONE,
-                        stopbits=serial.STOPBITS_ONE,
-                        bytesize=serial.EIGHTBITS)
-    ser.open()
-
-    def read():
-        line = ser.readline()
-        small, large = [int(x) for x in line.split(',')]
-        LOGGER.debug("Read from serial port: %s %s", small, large)
-        return {"small": small, "large": large}
-
-    return read
-
-
-def setup_temp_sensor():
-    try:
-        sht = sht21()
-        sht.get_temp()
-    except IOError:
-        LOGGER.debug("No sht sensor available")
-        sht = None
-
-    def read():
-        if sht is None:
-            return {"temperature": None, "humidity": None}
-
-        LOGGER.debug("Reading from sht sensor")
-        return {"temperature": round(sht.get_temp()),
-                "humidity": round(sht.get_humidity())}
-
-    return read
-
-
-def run():
+def run(config_file):
     LOGGER.info("Reading from config")
-    config = yaml.load(open('config.yaml'))
+    config = yaml.load(config_file)
     mqtt_config = config['mqtt']
 
     LOGGER.info("Starting air quality sensor")
@@ -100,7 +62,3 @@ def run():
                            mqtt_config['qos'])
     except KeyboardInterrupt:
         client.loop_stop()
-
-
-if __name__ == '__main__':
-    run()
