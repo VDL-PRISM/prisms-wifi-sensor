@@ -1,7 +1,9 @@
 import argparse
 import mqtt_publisher
+import http_server
 
-methods = {'mqtt_publisher': mqtt_publisher.run}
+methods = {'mqtt_publisher': mqtt_publisher.run,
+           'http_server': http_server.run}
 
 parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
 parser.add_argument('method', choices=methods.keys(),

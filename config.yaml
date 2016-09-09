@@ -9,3 +9,6 @@ mqtt:
   port: 1883
   topic: prisms/airquality/
   qos: 2
+
+http:
+  port: 8123
