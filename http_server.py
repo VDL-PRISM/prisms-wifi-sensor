@@ -1,10 +1,10 @@
 import logging
-from Queue import Queue, Empty
 import socket
 import threading
 import time
 
 from flask import Flask, jsonify
+from persistent_queue import PersistentQueue
 import yaml
 
 from sensors import setup_air_quality, setup_temp_sensor
@@ -13,21 +13,22 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 LOGGER = logging.getLogger("mqtt_sensor")
 app = Flask(__name__)
-queue = Queue()
+queue = PersistentQueue('queue')
+CHUNK_SIZE = 100
 
 
 @app.route("/")
 def get_data():
     data = []
-    try:
-        while True:
-            LOGGER.debug("Getting data into queue")
-            data.append(queue.get_nowait())
-            queue.task_done()
-    except Empty:
-        pass
+    size = CHUNK_SIZE if len(queue) > CHUNK_SIZE else len(queue)
 
+    LOGGER.debug("Getting data from queue")
+    # Warning: the data is being removed from the queue so if for some reason
+    # the response doesn't get received, the data will be gone. This is not an
+    # ideal solution.
+    data = queue.pop(size)
     return jsonify(data=data)
+
 
 def run(config_file):
     LOGGER.info("Reading from config")
@@ -60,6 +61,7 @@ def run(config_file):
             LOGGER.info("Getting new data")
             air_data = air_sensor()
             temp_data = temp_sensor()
+
             now = time.time()
             sequence_number += 1
 
@@ -72,7 +74,7 @@ def run(config_file):
 
             # Store data for HTTP server
             LOGGER.debug("Putting data into queue")
-            queue.put(data)
+            queue.push(data)
     except KeyboardInterrupt:
         pass
 
