@@ -1,9 +1,11 @@
+import json
 import logging
+import os.path
 import socket
 import threading
 import time
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from persistent_queue import PersistentQueue
 import yaml
 
@@ -17,16 +19,14 @@ queue = PersistentQueue('queue')
 CHUNK_SIZE = 100
 
 
-@app.route("/")
-def get_data():
-    data = []
-    size = CHUNK_SIZE if len(queue) > CHUNK_SIZE else len(queue)
+@app.route("/data/<int:ack>")
+def get_data(ack):
+    # Delete the amount of data that has been ACK'd
+    queue.delete(ack)
 
-    LOGGER.debug("Getting data from queue")
-    # Warning: the data is being removed from the queue so if for some reason
-    # the response doesn't get received, the data will be gone. This is not an
-    # ideal solution.
-    data = queue.pop(size)
+    # Send more data
+    size = CHUNK_SIZE if len(queue) > CHUNK_SIZE else len(queue)
+    data = queue.peek(size)
     return jsonify(data=data)
 
 
