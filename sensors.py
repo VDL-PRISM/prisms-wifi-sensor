@@ -1,5 +1,5 @@
-# import Adafruit_BBIO.UART as UART
-# from driver.sht_driver import sht21
+import Adafruit_BBIO.UART as UART
+from driver.sht_driver import sht21
 
 def setup_air_quality(port, baudrate):
     # Setup UART
