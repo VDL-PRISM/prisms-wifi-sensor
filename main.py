@@ -1,7 +1,7 @@
 import argparse
-import mqtt_publisher
-import http_server
-import coap_server
+from servers import mqtt_publisher
+from servers import http_server
+from servers import coap_server
 
 methods = {'mqtt_publisher': mqtt_publisher.run,
            'http_server': http_server.run,
