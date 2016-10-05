@@ -28,6 +28,9 @@ def run(config_file):
     LOGGER.info("Starting temperature sensor")
     temp_sensor = setup_temp_sensor()
 
+    LOGGER.info("Starting LCD screen")
+    lcd = setup_lcd_sensor()
+
     LOGGER.info("Getting host name")
     hostname = socket.gethostname()
     LOGGER.info("Hostname: %s", hostname)
@@ -59,6 +62,10 @@ def run(config_file):
                     "monitorname": hostname}
             data.update(air_data)
             data.update(temp_data)
+
+            lcd.print("S: {}  L: {}".format(air_data['small'], air_data['large']),
+                      "{}".format(now) if temp_data['temperature'] is None
+                      else "{} C  {} RH".format(temp_data['temperature'], temp_data['humidity']))
 
             # Send to MQTT
             LOGGER.info("Publishing new data: %s", data)

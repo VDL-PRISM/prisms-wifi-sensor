@@ -1,5 +1,7 @@
 import Adafruit_BBIO.UART as UART
 from driver.sht_driver import sht21
+from driver.lcd_driver_adafruit import lcd_driver
+
 
 def setup_air_quality(port, baudrate):
     # Setup UART
@@ -37,3 +39,17 @@ def setup_temp_sensor():
                 "humidity": round(sht.get_humidity())}
 
     return read
+
+
+def setup_lcd_sensor():
+    lcd = lcd_driver()
+    lcd.setup()
+
+    def print(line1, line2):
+        lcd.lcdcommand('00000001')  # Reset
+        lcd.lcdprint(line1)
+        lcd.lcdcommand('11000000')  # Move cursor down
+        lcd.lcdprint(line2)
+        lcd.lcdcommand('10000000')  # Move cursor to beginning
+
+    return print
