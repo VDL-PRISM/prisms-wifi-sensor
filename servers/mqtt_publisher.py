@@ -37,6 +37,10 @@ def run(config_file):
     client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
     client.connect(mqtt_config['broker'], mqtt_config['port'])
 
+    def on_publish(client, userdata, mid):
+        LOGGER.info("Published MID: %s", mid)
+    client.on_publish = on_publish
+
     # Read from sensors and publish data forever
     try:
         client.loop_start()
