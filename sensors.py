@@ -12,7 +12,9 @@ def setup_air_quality(port, baudrate):
                         parity=serial.PARITY_NONE,
                         stopbits=serial.STOPBITS_ONE,
                         bytesize=serial.EIGHTBITS)
-    ser.open()
+
+    if not ser.isOpen():
+        ser.open()
 
     def read():
         line = ser.readline()
