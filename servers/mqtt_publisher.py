@@ -7,7 +7,7 @@ import time
 import paho.mqtt.client as mqtt
 import yaml
 
-from sensors import setup_air_quality, setup_temp_sensor
+from sensors import setup_air_quality, setup_temp_sensor, setup_lcd_sensor
 
 
 logging.basicConfig(level=logging.DEBUG,
