@@ -59,9 +59,9 @@ def run(config_file):
             data.update(air_data)
             data.update(temp_data)
 
-            lcd.write("S: {}  L: {}".format(air_data['small'], air_data['large']),
-                      "{}".format(now) if temp_data['temperature'] is None
-                      else "{} C  {} RH".format(temp_data['temperature'], temp_data['humidity']))
+            lcd("S: {}  L: {}".format(air_data['small'], air_data['large']),
+                "{}".format(now) if temp_data['temperature'] is None
+                else "{} C  {} RH".format(temp_data['temperature'], temp_data['humidity']))
 
             # Send to MQTT
             LOGGER.info("Publishing new data: %s", data)
