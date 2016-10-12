@@ -1,8 +1,11 @@
+import logging
+
 import Adafruit_BBIO.UART as UART
 from driver.sht_driver import sht21
 from driver.lcd_driver_adafruit import lcd_driver
 import serial
 
+LOGGER = logging.getLogger(__name__)
 
 def setup_air_quality(port, baudrate):
     # Setup UART
@@ -49,6 +52,7 @@ def setup_lcd_sensor():
     lcd.setup()
 
     def write(line1, line2):
+        LOGGER.debug("Writing to lcd screen")
         lcd.lcdcommand('00000001')  # Reset
         lcd.lcdprint(line1)
         lcd.lcdcommand('11000000')  # Move cursor down

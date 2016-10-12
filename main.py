@@ -1,6 +1,10 @@
 import argparse
+import logging
+
 from servers import mqtt_publisher
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 methods = {'mqtt_publisher': mqtt_publisher.run}
 
 parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')

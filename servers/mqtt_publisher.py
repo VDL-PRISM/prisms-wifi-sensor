@@ -9,10 +9,7 @@ import yaml
 
 from sensors import setup_air_quality, setup_temp_sensor, setup_lcd_sensor
 
-
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-LOGGER = logging.getLogger("mqtt_sensor")
+LOGGER = logging.getLogger(__name__)
 
 
 def run(config_file):
