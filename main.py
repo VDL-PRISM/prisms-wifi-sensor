@@ -1,11 +1,7 @@
 import argparse
 from servers import mqtt_publisher
-from servers import http_server
-from servers import coap_server
 
-methods = {'mqtt_publisher': mqtt_publisher.run,
-           'http_server': http_server.run,
-           'coap_server': coap_server.run}
+methods = {'mqtt_publisher': mqtt_publisher.run}
 
 parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
 parser.add_argument('method', choices=methods.keys(),
