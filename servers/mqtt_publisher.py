@@ -5,7 +5,6 @@ import socket
 import time
 
 import paho.mqtt.client as mqtt
-import serial
 import yaml
 
 from sensors import setup_air_quality, setup_temp_sensor
