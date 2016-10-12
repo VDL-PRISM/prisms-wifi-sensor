@@ -73,5 +73,5 @@ def run(config_file):
             break
         except Exception as e:
             # Keep going no matter of the exception -- hopefully it will fix itself
-            LOGGER.error("An exception occurred: %s", e)
+            LOGGER.exception("An exception occurred!")
             pass
