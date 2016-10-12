@@ -45,11 +45,11 @@ def run(config_file):
     client.on_publish = on_publish
 
     # Read from sensors and publish data forever
-    try:
-        client.loop_start()
-        sequence_number = 0
+    client.loop_start()
+    sequence_number = 0
 
-        while True:
+    while True:
+        try:
             LOGGER.info("Getting new data")
             air_data = air_sensor()
             temp_data = temp_sensor()
@@ -71,5 +71,11 @@ def run(config_file):
             LOGGER.info("Publishing new data: %s", data)
             client.publish(mqtt_config['topic'] + hostname, json.dumps(data),
                            mqtt_config['qos'])
-    except KeyboardInterrupt:
-        client.loop_stop()
+
+        except KeyboardInterrupt:
+            client.loop_stop()
+            break
+        except Exception as e:
+            # Keep going no matter of the exception -- hopefully it will fix itself
+            LOGGER.error("An exception occurred: %s", e)
+            pass
