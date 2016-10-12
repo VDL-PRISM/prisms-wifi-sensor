@@ -45,11 +45,11 @@ def setup_lcd_sensor():
     lcd = lcd_driver()
     lcd.setup()
 
-    def print(line1, line2):
+    def write(line1, line2):
         lcd.lcdcommand('00000001')  # Reset
         lcd.lcdprint(line1)
         lcd.lcdcommand('11000000')  # Move cursor down
         lcd.lcdprint(line2)
         lcd.lcdcommand('10000000')  # Move cursor to beginning
 
-    return print
+    return write
