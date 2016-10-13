@@ -27,14 +27,24 @@ def run(config_file):
     LOGGER.info("Starting LCD screen")
     lcd = setup_lcd_sensor()
 
-    LOGGER.info("Getting host name")
-    hostname = socket.gethostname()
-    LOGGER.info("Hostname: %s", hostname)
+    while True:
+        try:
+            LOGGER.info("Getting host name")
+            hostname = socket.gethostname()
+            LOGGER.info("Hostname: %s", hostname)
 
-    LOGGER.info("Connecting to MQTT broker")
-    client = mqtt.Client(client_id=hostname, clean_session=False)
-    client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
-    client.connect(mqtt_config['broker'], mqtt_config['port'])
+            LOGGER.info("Connecting to MQTT broker")
+            client = mqtt.Client(client_id=hostname, clean_session=False)
+            client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
+            client.connect(mqtt_config['broker'], mqtt_config['port'])
+        except Exception as e:
+            # Keep going no matter of the exception -- hopefully it will fix itself
+            LOGGER.exception("An exception occurred!")
+            LOGGER.warn("Sleeping for 10 seconds and trying again...")
+            time.sleep(10)
+            continue
+
+        break
 
     def on_publish(client, userdata, mid):
         LOGGER.info("Published MID: %s", mid)
