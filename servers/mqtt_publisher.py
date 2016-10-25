@@ -1,87 +1,73 @@
 import json
 import logging
 import os
-import socket
 import time
 
 import paho.mqtt.client as mqtt
-import yaml
-
-from sensors import setup_air_quality, setup_temp_sensor, setup_lcd_sensor
 
 LOGGER = logging.getLogger(__name__)
 
 
-def run(config_file):
-    LOGGER.info("Reading from config")
-    config = yaml.load(config_file)
+def run(config, hostname, queue, lcd):
     mqtt_config = config['mqtt']
+    connect_counter = 1
 
-    LOGGER.info("Starting air quality sensor")
-    air_sensor = setup_air_quality(config['serial']['port'],
-                                   config['serial']['baudrate'])
-
-    LOGGER.info("Starting temperature sensor")
-    temp_sensor = setup_temp_sensor()
-
-    LOGGER.info("Starting LCD screen")
-    lcd = setup_lcd_sensor()
-
-    while True:
-        try:
-            LOGGER.info("Getting host name")
-            hostname = socket.gethostname()
-            LOGGER.info("Hostname: %s", hostname)
-
-            LOGGER.info("Connecting to MQTT broker")
-            client = mqtt.Client(client_id=hostname, clean_session=False)
-            client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
-            client.connect(mqtt_config['broker'], mqtt_config['port'])
-        except Exception as e:
-            # Keep going no matter of the exception -- hopefully it will fix itself
-            LOGGER.exception("An exception occurred!")
-            LOGGER.warn("Sleeping for 10 seconds and trying again...")
+    def do_publish(client, queue):
+        LOGGER.info("Trying to publish data")
+        while len(queue) == 0:
+            LOGGER.info("No data to publish, trying again later")
             time.sleep(10)
-            continue
 
-        break
+        data = queue.peek()
+        LOGGER.info("Publishing data: %s", data)
+        client.publish(mqtt_config['topic'] + hostname, json.dumps(data),
+                       mqtt_config['qos'])
 
-    def on_publish(client, userdata, mid):
-        LOGGER.info("Published MID: %s", mid)
-    client.on_publish = on_publish
+    def on_connect(client, queue, flags, rc):
+        LOGGER.info("Connected to MQTT broker")
+        do_publish(client, queue)
 
-    # Read from sensors and publish data forever
-    client.loop_start()
-    sequence_number = 0
+    def on_publish(client, queue, mid):
+        LOGGER.info("Published finished (MID: %s)", mid)
+
+        # Remove the data that was just published
+        queue.delete()
+
+        if mid % 100:
+            queue.flush()
+
+        # Update LCD
+        lcd(line2="{}".format(len(queue)))
+
+        # Try publishing the next message
+        do_publish(client, queue)
 
     while True:
         try:
-            LOGGER.info("Getting new data")
-            air_data = air_sensor()
-            temp_data = temp_sensor()
-            now = time.time()
-            sequence_number += 1
+            LOGGER.info("Connecting to MQTT broker")
+            lcd(line2="Connecting... ({})".format(connect_counter))
 
-            # combine data together
-            data = {"sampletime": now,
-                    "sequence": sequence_number,
-                    "monitorname": hostname}
-            data.update(air_data)
-            data.update(temp_data)
+            client = mqtt.Client(client_id=hostname, userdata=queue, clean_session=False)
+            client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
 
-            lcd("S: {}  L: {}".format(air_data['small'], air_data['large']),
-                "{}".format(now) if temp_data['temperature'] is None
-                else "{} C  {} RH".format(temp_data['temperature'], temp_data['humidity']))
+            client.on_publish = on_publish
+            client.on_connect = on_connect
 
-            # Send to MQTT
-            LOGGER.info("Publishing new data: %s", data)
-            client.publish(mqtt_config['topic'] + hostname, json.dumps(data),
-                           mqtt_config['qos'])
+            client.connect(mqtt_config['broker'], mqtt_config['port'])
+            lcd(line2="Connected!")
+
+            client.loop_forever()
 
         except KeyboardInterrupt:
-            client.loop_stop()
+            LOGGER.debug("Cleaning up MQTT publisher")
+            queue.flush()
             break
         except Exception as e:
             # Keep going no matter of the exception -- hopefully it will fix itself
             LOGGER.exception("An exception occurred!")
-            pass
+            LOGGER.warn("Sleeping for 30 seconds and trying again...")
+            lcd(line2="Waiting...")
+            connect_counter += 1
+
+            time.sleep(30)
+            continue
