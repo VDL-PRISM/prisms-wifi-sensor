@@ -13,12 +13,8 @@ def run(config, hostname, queue, lcd):
     connect_counter = 1
 
     def do_publish(client, queue):
-        LOGGER.info("Trying to publish data")
-        while len(queue) == 0:
-            LOGGER.info("No data to publish, trying again later")
-            time.sleep(10)
-
-        data = queue.peek()
+        LOGGER.info("Waiting for data on the queue")
+        data = queue.peek(blocking=True)
         LOGGER.info("Publishing data: %s", data)
         client.publish(mqtt_config['topic'] + hostname, json.dumps(data),
                        mqtt_config['qos'])
