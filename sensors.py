@@ -21,7 +21,7 @@ def setup_air_quality(port, baudrate):
 
     def read():
         line = ser.readline()
-        small, large = [int(x) for x in line.split(',')]
+        small, large = [int(x) for x in line.split(b',')]
         LOGGER.debug("Read from serial port: %s %s", small, large)
         return {"small": small, "large": large}
 

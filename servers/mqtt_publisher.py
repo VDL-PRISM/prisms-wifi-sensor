@@ -29,7 +29,7 @@ def run(config, hostname, queue, lcd):
         # Remove the data that was just published
         queue.delete()
 
-        if mid % 100:
+        if mid % 100 == 0:
             queue.flush()
 
         # Update LCD
@@ -41,7 +41,7 @@ def run(config, hostname, queue, lcd):
     while True:
         try:
             LOGGER.info("Connecting to MQTT broker")
-            lcd(line2="Connecting... ({})".format(connect_counter))
+            lcd(line2="Connecting ({})".format(connect_counter))
 
             client = mqtt.Client(client_id=hostname, userdata=queue, clean_session=False)
             client.username_pw_set(mqtt_config['username'], mqtt_config['password'])

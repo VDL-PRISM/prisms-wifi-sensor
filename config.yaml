@@ -8,7 +8,7 @@ mqtt:
   broker: 10.0.1.1
   port: 1883
   topic: prisms/airquality/
-  qos: 2
+  qos: 1
 
 http:
   port: 8123
