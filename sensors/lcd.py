@@ -169,8 +169,13 @@ class lcd_driver:
         self.PWM.start(self.B, 0) #B P8_46
 
 def setup():
-    lcd = lcd_driver()
-    lcd.setup()
+    try:
+        lcd = lcd_driver()
+        lcd.setup()
+    except (FileNotFoundError, SystemError):
+        LOGGER.warning("Error occurred while setting up LCD screen. "
+                       "Probably means it is not connected.")
+        lcd = None
 
     line1_ = ''
     line2_ = ''
@@ -190,10 +195,13 @@ def setup():
         LOGGER.debug("Line 1: %s", line1_)
         LOGGER.debug("Line 2: %s", line2_)
 
-        lcd.lcdcommand('00000001')  # Reset
-        lcd.lcdprint(line1_)
-        lcd.lcdcommand('11000000')  # Move cursor down
-        lcd.lcdprint(line2_)
-        lcd.lcdcommand('10000000')  # Move cursor to beginning
+        if lcd is None:
+            LOGGER.warning("LCD is not connected")
+        else:
+            lcd.lcdcommand('00000001')  # Reset
+            lcd.lcdprint(line1_)
+            lcd.lcdcommand('11000000')  # Move cursor down
+            lcd.lcdprint(line2_)
+            lcd.lcdcommand('10000000')  # Move cursor to beginning
 
     return write
