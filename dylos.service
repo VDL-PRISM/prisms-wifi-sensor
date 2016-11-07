@@ -1,0 +1,11 @@
+[Unit]
+Description=Dylos Sensor
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/dylos
+ExecStart=/root/pyenv/versions/3.5.2/envs/dylos/bin/python main.py mqtt_publisher > dylos.log 2>&1
+
+[Install]
+WantedBy=multi-user.target

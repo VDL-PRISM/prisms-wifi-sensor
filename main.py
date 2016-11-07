@@ -1,11 +1,21 @@
 import argparse
-from servers import mqtt_publisher
-from servers import http_server
-from servers import coap_server
+import logging
+import socket
+from threading import Thread
+import time
 
-methods = {'mqtt_publisher': mqtt_publisher.run,
-           'http_server': http_server.run,
-           'coap_server': coap_server.run}
+from persistent_queue import PersistentQueue
+import yaml
+
+from servers import mqtt_publisher
+from sensors import setup_air_quality, setup_temp_sensor, setup_lcd_sensor
+
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+LOGGER = logging.getLogger(__name__)
+
+methods = {'mqtt_publisher': mqtt_publisher.run}
 
 parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
 parser.add_argument('method', choices=methods.keys(),
@@ -14,5 +24,74 @@ parser.add_argument('-c', '--config', type=argparse.FileType('r'),
                     default=open('config.yaml'), help='Configuration file')
 
 args = parser.parse_args()
-methods[args.method](args.config)
+config = config = yaml.load(args.config)
+
+# TODO: Protect against failures here!
+
+LOGGER.info("Loading persistent queue")
+queue = PersistentQueue('dylos.queue')
+
+LOGGER.info("Getting host name")
+hostname = socket.gethostname()
+LOGGER.info("Hostname: %s", hostname)
+
+# Set up sensors
+LOGGER.info("Starting LCD screen")
+lcd = setup_lcd_sensor()
+
+LOGGER.info("Starting air quality sensor")
+air_sensor = setup_air_quality(config['serial']['port'],
+                               config['serial']['baudrate'])
+
+LOGGER.info("Starting temperature sensor")
+temp_sensor = setup_temp_sensor()
+
+# Read data from the sensor
+def read_data():
+    sequence_number = 0
+
+    while True:
+        try:
+            LOGGER.info("Getting new data from sensors")
+            air_data = air_sensor()
+            temp_data = temp_sensor()
+            now = time.time()
+            sequence_number += 1
+
+            # combine data together
+            data = {"sampletime": now,
+                    "sequence": sequence_number,
+                    "monitorname": hostname,
+                    **air_data,
+                    **temp_data}
+
+            lcd("S: {}  L: {}".format(air_data['small'], air_data['large']))
+
+            # Save data for later
+            queue.push(data)
+
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            # Keep going no matter of the exception -- hopefully it will fix itself
+            LOGGER.exception("An exception occurred!")
+
+            LOGGER.debug("Waiting 15 seconds and then trying again")
+            time.sleep(15)
+            continue
+
+t = Thread(target=read_data)
+t.daemon = True
+t.start()
+
+# Start server
+try:
+    methods[args.method](config, hostname, queue, lcd)
+except KeyboardInterrupt:
+    print("Qutting...")
+
+
+
+
+
 

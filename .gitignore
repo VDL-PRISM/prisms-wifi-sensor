@@ -1,2 +1,3 @@
 queue
+*.queue
 .python-version

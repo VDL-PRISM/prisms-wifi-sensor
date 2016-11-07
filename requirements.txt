@@ -1,5 +1,6 @@
+Adafruit-BBIO==0.0.30
 Flask==0.11.1
 paho-mqtt==1.2
 pyserial==3.1.1
-python-persistent-queue==1.0.1
+python-persistent-queue==1.2.0
 PyYAML==3.12
