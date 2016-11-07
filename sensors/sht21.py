@@ -1,10 +1,5 @@
 import logging
 
-import Adafruit_BBIO.UART as UART
-from driver.sht_driver import sht21
-from driver.lcd_driver_adafruit import lcd_driver
-import serial
-
 LOGGER = logging.getLogger(__name__)
 
 
