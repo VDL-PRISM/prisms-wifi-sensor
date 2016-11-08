@@ -44,7 +44,7 @@ air_sensor = dylos.setup(config['serial']['port'],
                          config['serial']['baudrate'])
 
 LOGGER.info("Starting temperature sensor")
-temp_sensor = sh21.setup()
+temp_sensor = sht21.setup()
 
 # Read data from the sensor
 def read_data():
