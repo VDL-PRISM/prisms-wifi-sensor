@@ -8,7 +8,7 @@ from persistent_queue import PersistentQueue
 import yaml
 
 from servers import mqtt_publisher
-from sensors import setup_air_quality, setup_temp_sensor, setup_lcd_sensor
+from sensors import dylos, sht21, lcd
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -37,14 +37,14 @@ LOGGER.info("Hostname: %s", hostname)
 
 # Set up sensors
 LOGGER.info("Starting LCD screen")
-lcd = setup_lcd_sensor()
+lcd_screen = lcd.setup()
 
 LOGGER.info("Starting air quality sensor")
-air_sensor = setup_air_quality(config['serial']['port'],
-                               config['serial']['baudrate'])
+air_sensor = dylos.setup(config['serial']['port'],
+                         config['serial']['baudrate'])
 
 LOGGER.info("Starting temperature sensor")
-temp_sensor = setup_temp_sensor()
+temp_sensor = sht21.setup()
 
 # Read data from the sensor
 def read_data():
@@ -65,7 +65,7 @@ def read_data():
                     **air_data,
                     **temp_data}
 
-            lcd("S: {}  L: {}".format(air_data['small'], air_data['large']))
+            lcd_screen("S: {}  L: {}".format(air_data['small'], air_data['large']))
 
             # Save data for later
             queue.push(data)
@@ -86,7 +86,7 @@ t.start()
 
 # Start server
 try:
-    methods[args.method](config, hostname, queue, lcd)
+    methods[args.method](config, hostname, queue, lcd_screen)
 except KeyboardInterrupt:
     print("Qutting...")
 
