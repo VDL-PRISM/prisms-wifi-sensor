@@ -64,11 +64,11 @@ class lcd_driver:
         #11010100  Moves cursor to first address on the left of LINE 4
 
         LOGGER.debug("Transferring LCD Control to main loop")
-        LOGGER.debug('\n')
+        LOGGER.debug('')
 
         LOGGER.debug("Process PID: ")
         LOGGER.debug(str(os.getpid()))
-        LOGGER.debug('\n')
+        LOGGER.debug('')
 
 
     # LCD instruction mode

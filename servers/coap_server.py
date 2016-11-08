@@ -13,11 +13,6 @@ CHUNK_SIZE = 20
 
 
 class DataResource(resource.Resource):
-    """
-    Example resource which supports GET and PUT methods. It sends large
-    responses, which trigger blockwise transfer.
-    """
-
     def __init__(self, queue, lcd):
         super(DataResource, self).__init__()
         self.queue = queue
