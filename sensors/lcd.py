@@ -172,9 +172,9 @@ def setup():
     try:
         lcd = lcd_driver()
         lcd.setup()
-    except (FileNotFoundError, SystemError):
-        LOGGER.warning("Error occurred while setting up LCD screen. "
-                       "Probably means it is not connected.")
+    except Exception as e:
+        LOGGER.error("Error occurred while setting up LCD screen: %s ", e)
+        LOGGER.error("Probably means it is not connected.")
         lcd = None
 
     line1_ = ''
@@ -184,7 +184,7 @@ def setup():
         nonlocal line1_
         nonlocal line2_
 
-        LOGGER.debug("Writing to lcd screen")
+        LOGGER.debug("Writing to LCD screen")
 
         if line1 is not None:
             line1_ = line1
@@ -198,10 +198,13 @@ def setup():
         if lcd is None:
             LOGGER.warning("LCD is not connected")
         else:
-            lcd.lcdcommand('00000001')  # Reset
-            lcd.lcdprint(line1_)
-            lcd.lcdcommand('11000000')  # Move cursor down
-            lcd.lcdprint(line2_)
-            lcd.lcdcommand('10000000')  # Move cursor to beginning
+            try:
+                lcd.lcdcommand('00000001')  # Reset
+                lcd.lcdprint(line1_)
+                lcd.lcdcommand('11000000')  # Move cursor down
+                lcd.lcdprint(line2_)
+                lcd.lcdcommand('10000000')  # Move cursor to beginning
+            except Exception as e:
+                LOGGER.error("An exception occurred while writing to LCD: %s", e)
 
     return write

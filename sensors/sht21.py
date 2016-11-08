@@ -21,16 +21,20 @@ def setup():
     try:
         sht = sht21()
         sht.get_temp()
-    except IOError:
-        LOGGER.debug("No sht sensor available")
+    except Exception as e:
+        LOGGER.warning("Exception %s: Probably means there is no sht sensor available", e)
         sht = None
 
     def read():
         if sht is None:
             return {"temperature": None, "humidity": None}
 
-        LOGGER.debug("Reading from sht sensor")
-        return {"temperature": round(sht.get_temp()),
-                "humidity": round(sht.get_humidity())}
+        try:
+            LOGGER.debug("Reading from sht sensor")
+            return {"temperature": round(sht.get_temp()),
+                    "humidity": round(sht.get_humidity())}
+        except Exception as e:
+            LOGGER.error("Error while reading from sht: %s", e)
+            return {"temperature": None, "humidity": None}
 
     return read
