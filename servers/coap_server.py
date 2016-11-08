@@ -1,18 +1,11 @@
 import asyncio
 import json
 import logging
-import os.path
-import socket
 import struct
-import threading
 import time
 
 import aiocoap.resource as resource
 import aiocoap
-from persistent_queue import PersistentQueue
-import yaml
-
-from sensors import setup_air_quality, setup_temp_sensor
 
 
 LOGGER = logging.getLogger("mqtt_sensor")
@@ -30,8 +23,7 @@ class DataResource(resource.Resource):
         self.queue = queue
         self.lcd = lcd
 
-    @asyncio.coroutine
-    def render_get(self, request):
+    async def render_get(self, request):
         ack = struct.unpack('I', request.payload)[0]
 
         # Delete the amount of data that has been ACK'd
