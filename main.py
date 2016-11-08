@@ -7,7 +7,7 @@ import time
 from persistent_queue import PersistentQueue
 import yaml
 
-from servers import mqtt_publisher
+from servers import mqtt_publisher, coap_server
 from sensors import dylos, sht21, lcd
 
 
@@ -15,7 +15,8 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 LOGGER = logging.getLogger(__name__)
 
-methods = {'mqtt_publisher': mqtt_publisher.run}
+methods = {'mqtt_publisher': mqtt_publisher.run,
+           'coap_server': coap_server.run}
 
 parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
 parser.add_argument('method', choices=methods.keys(),
