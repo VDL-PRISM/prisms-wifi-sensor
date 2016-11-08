@@ -8,11 +8,11 @@ from aiocoap import *
 
 logging.basicConfig(level=logging.INFO)
 
-async def main(acks):
+async def main(address, acks):
     protocol = await Context.create_client_context()
 
     request = Message(code=GET, payload=struct.pack('I', acks))
-    request.set_request_uri('coap://localhost/data')
+    request.set_request_uri('coap://{}/data'.format(address))
 
     try:
         response = await protocol.request(request).response
@@ -26,4 +26,7 @@ async def main(acks):
 
 if __name__ == "__main__":
     import sys
-    asyncio.get_event_loop().run_until_complete(main(int(sys.argv[1])))
+    if len(sys.argv) < 3:
+        print("Error: must provide address and number of acks")
+    else:
+        asyncio.get_event_loop().run_until_complete(main(sys.argv[1], int(sys.argv[2])))
