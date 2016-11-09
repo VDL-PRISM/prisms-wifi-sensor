@@ -5,7 +5,7 @@ serial:
 mqtt:
   username: prisms
   password: prisms
-  broker: 10.0.1.1
+  broker: prisms-gateway.local
   port: 1883
   topic: prisms/airquality/
   qos: 1
