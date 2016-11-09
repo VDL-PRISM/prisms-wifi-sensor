@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import json
 import logging
 import struct
@@ -23,7 +24,9 @@ class DataResource(resource.Resource):
         # Delete the amount of data that has been ACK'd
         self.queue.delete(ack)
 
-        self.lcd.write_queue_size(len(self.queue))
+        self.lcd.queue_size = len(self.queue)
+        self.lcd.update_queue_time = datetime.now()
+        self.lcd.display_data()
 
         # Get data from queue
         size = CHUNK_SIZE if len(self.queue) > CHUNK_SIZE else len(self.queue)

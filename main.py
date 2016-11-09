@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import logging
 import socket
 from threading import Thread
@@ -65,10 +66,15 @@ def read_data():
                     **air_data,
                     **temp_data}
 
-            lcd.write_air_quality(air_data['small'], air_data['large'])
-
             # Save data for later
             queue.push(data)
+
+            # Display results
+            lcd.small = air_data['small']
+            lcd.large = air_data['large']
+            lcd.update_air_time = datetime.now()
+            lcd.queue_size = len(queue)
+            lcd.display_data()
 
         except KeyboardInterrupt:
             break

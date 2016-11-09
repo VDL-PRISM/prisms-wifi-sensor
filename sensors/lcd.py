@@ -166,8 +166,15 @@ class lcd_driver:
 
 class LCDWriter:
     def __init__(self):
-        self.line1 = ''
-        self.line2 = ''
+        self.line1 = ""
+        self.line2 = ""
+
+        self.small = 0
+        self.large = 0
+        self.update_air_time = None
+
+        self.queue_size = 0
+        self.update_queue_time = None
 
         try:
             self.lcd = lcd_driver()
@@ -177,19 +184,18 @@ class LCDWriter:
             LOGGER.error("Probably means it is not connected.")
             self.lcd = None
 
-    def write_air_quality(self, small, large):
-        small = min(small, 99999)
-        large = min(large, 9999)
-        now = time.strftime("%H:%M")
+    def display_data(self):
+        update_air_time = "" if self.update_air_time is None else \
+                          self.update_air_time.strftime("%H:%M")
+        update_queue_time = "" if self.update_queue_time is None else \
+                            self.update_queue_time.strftime("%H:%M")
 
-        self.write(line1="{: >5} {: >4} {}".format(small, large, now))
+        line1 = "{: >5} {: >4} {}".format(self.small, self.large, update_air_time)
+        line2 = "{: >10} {}".format(self.queue_size, update_queue_time)
 
-    def write_queue_size(self, queue_size):
-        now = time.strftime("%H:%M")
+        self.display(line1=line1, line2=line2)
 
-        self.write(line2="{: >10} {}".format(queue_size, now))
-
-    def write(self, line1=None, line2=None):
+    def display(self, line1=None, line2=None):
         if line1 is not None:
             self.line1 = line1
 
