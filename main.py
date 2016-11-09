@@ -8,7 +8,7 @@ from persistent_queue import PersistentQueue
 import yaml
 
 from servers import mqtt_publisher, coap_server
-from sensors import dylos, sht21, lcd
+from sensors import dylos, sht21, LCDWriter
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -38,7 +38,7 @@ LOGGER.info("Hostname: %s", hostname)
 
 # Set up sensors
 LOGGER.info("Starting LCD screen")
-lcd_screen = lcd.setup()
+lcd = LCDWriter()
 
 LOGGER.info("Starting air quality sensor")
 air_sensor = dylos.setup(config['serial']['port'],
@@ -66,7 +66,7 @@ def read_data():
                     **air_data,
                     **temp_data}
 
-            lcd_screen("S: {}  L: {}".format(air_data['small'], air_data['large']))
+            lcd.write_air_quality(air_data['small'], air_data['large'])
 
             # Save data for later
             queue.push(data)
@@ -87,7 +87,7 @@ t.start()
 
 # Start server
 try:
-    methods[args.method](config, hostname, queue, lcd_screen)
+    methods[args.method](config, hostname, queue, lcd)
 except KeyboardInterrupt:
     print("Qutting...")
 

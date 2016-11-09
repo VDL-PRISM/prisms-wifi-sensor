@@ -64,11 +64,7 @@ class lcd_driver:
         #11010100  Moves cursor to first address on the left of LINE 4
 
         LOGGER.debug("Transferring LCD Control to main loop")
-        LOGGER.debug('')
-
-        LOGGER.debug("Process PID: ")
-        LOGGER.debug(str(os.getpid()))
-        LOGGER.debug('')
+        LOGGER.debug("Process PID: %s", os.getpid())
 
 
     # LCD instruction mode
@@ -168,43 +164,50 @@ class lcd_driver:
         self.PWM.start(self.G, 0) #G P8_45
         self.PWM.start(self.B, 0) #B P8_46
 
-def setup():
-    try:
-        lcd = lcd_driver()
-        lcd.setup()
-    except Exception as e:
-        LOGGER.error("Error occurred while setting up LCD screen: %s ", e)
-        LOGGER.error("Probably means it is not connected.")
-        lcd = None
 
-    line1_ = ''
-    line2_ = ''
+class LCDWriter:
+    def __init__(self):
+        self.line1 = ''
+        self.line2 = ''
 
-    def write(line1=None, line2=None):
-        nonlocal line1_
-        nonlocal line2_
+        try:
+            self.lcd = lcd_driver()
+            self.lcd.setup()
+        except Exception as e:
+            LOGGER.error("Error occurred while setting up LCD screen: %s ", e)
+            LOGGER.error("Probably means it is not connected.")
+            self.lcd = None
 
-        LOGGER.debug("Writing to LCD screen")
+    def write_air_quality(self, small, large):
+        small = min(small, 99999)
+        large = min(large, 9999)
+        now = time.strftime("%H:%M")
 
+        self.write(line1="{: >5} {: >4} {}".format(small, large, now))
+
+    def write_queue_size(self, queue_size):
+        now = time.strftime("%H:%M")
+
+        self.write(line2="{: >10} {}".format(queue_size, now))
+
+    def write(self, line1=None, line2=None):
         if line1 is not None:
-            line1_ = line1
+            self.line1 = line1
 
         if line2 is not None:
-            line2_ = line2
+            self.line2 = line2
 
-        LOGGER.debug("Line 1: %s", line1_)
-        LOGGER.debug("Line 2: %s", line2_)
+        LOGGER.debug("Line 1: %s", self.line1)
+        LOGGER.debug("Line 2: %s", self.line2)
 
-        if lcd is None:
+        if self.lcd is None:
             LOGGER.warning("LCD is not connected")
         else:
             try:
-                lcd.lcdcommand('00000001')  # Reset
-                lcd.lcdprint(line1_)
-                lcd.lcdcommand('11000000')  # Move cursor down
-                lcd.lcdprint(line2_)
-                lcd.lcdcommand('10000000')  # Move cursor to beginning
+                self.lcd.lcdcommand('00000001')  # Reset
+                self.lcd.lcdprint(self.line1)
+                self.lcd.lcdcommand('11000000')  # Move cursor down
+                self.lcd.lcdprint(self.line2)
+                self.lcd.lcdcommand('10000000')  # Move cursor to beginning
             except Exception as e:
                 LOGGER.error("An exception occurred while writing to LCD: %s", e)
-
-    return write

@@ -24,6 +24,8 @@ class DataResource(resource.Resource):
         # Delete the amount of data that has been ACK'd
         self.queue.delete(ack)
 
+        self.lcd.write_queue_size(len(queue))
+
         # Get data from queue
         size = CHUNK_SIZE if len(self.queue) > CHUNK_SIZE else len(self.queue)
         LOGGER.debug("Getting %s from the queue", size)
