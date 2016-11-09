@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import struct
-import time
 
 import aiocoap.resource as resource
 import aiocoap
@@ -24,7 +23,7 @@ class DataResource(resource.Resource):
         # Delete the amount of data that has been ACK'd
         self.queue.delete(ack)
 
-        self.lcd.write_queue_size(len(queue))
+        self.lcd.write_queue_size(len(self.queue))
 
         # Get data from queue
         size = CHUNK_SIZE if len(self.queue) > CHUNK_SIZE else len(self.queue)
@@ -42,11 +41,11 @@ def run(config, hostname, queue, lcd):
     # Start server
     try:
         root = resource.Site()
-        root.add_resource(('.well-known', 'core'), resource.WKCResource(root.get_resources_as_linkheader))
+        root.add_resource(('.well-known', 'core'),
+                          resource.WKCResource(root.get_resources_as_linkheader))
         root.add_resource(('data',), DataResource(queue, lcd))
 
         asyncio.async(aiocoap.Context.create_server_context(root))
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
         pass
-

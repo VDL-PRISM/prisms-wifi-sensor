@@ -8,7 +8,8 @@ from persistent_queue import PersistentQueue
 import yaml
 
 from servers import mqtt_publisher, coap_server
-from sensors import dylos, sht21, LCDWriter
+from sensors import dylos, sht21
+from sensors.lcd import LCDWriter
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -26,8 +27,6 @@ parser.add_argument('-c', '--config', type=argparse.FileType('r'),
 
 args = parser.parse_args()
 config = config = yaml.load(args.config)
-
-# TODO: Protect against failures here!
 
 LOGGER.info("Loading persistent queue")
 queue = PersistentQueue('dylos.queue')
@@ -73,7 +72,7 @@ def read_data():
 
         except KeyboardInterrupt:
             break
-        except Exception as e:
+        except Exception:
             # Keep going no matter of the exception -- hopefully it will fix itself
             LOGGER.exception("An exception occurred!")
 
@@ -90,9 +89,3 @@ try:
     methods[args.method](config, hostname, queue, lcd)
 except KeyboardInterrupt:
     print("Qutting...")
-
-
-
-
-
-

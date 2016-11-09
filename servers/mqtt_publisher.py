@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import time
 
 import paho.mqtt.client as mqtt
@@ -61,7 +60,7 @@ def run(config, hostname, queue, lcd):
         except Exception as e:
             # Keep going no matter of the exception -- hopefully it will fix itself
             LOGGER.exception("An exception occurred!")
-            LOGGER.warn("Sleeping for 30 seconds and trying again...")
+            LOGGER.warning("Sleeping for 30 seconds and trying again...")
             lcd.write(line2="Waiting...")
             connect_counter += 1
 

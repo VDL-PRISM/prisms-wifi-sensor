@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 import time
 
 import Adafruit_BBIO.GPIO as GPIO
@@ -25,14 +24,14 @@ class lcd_driver:
 
         self.GPIO = GPIO
         for pin in self.iomap:
-          self.GPIO.setup(pin, GPIO.OUT)
+            self.GPIO.setup(pin, GPIO.OUT)
 
         #PWM.start(channel, duty, [defautls, unless otherwise stated]freq=2000, polarity=0)
         #duty   0 = on
         #duty 100 = off
         self.PWM = PWM
         for pin in self.pwmmap:
-          self.PWM.start(pin, 0)
+            self.PWM.start(pin, 0)
 
         LOGGER.debug("Setting Up Screen")
 
@@ -69,12 +68,12 @@ class lcd_driver:
 
     # LCD instruction mode
     # For some reason my LCD takes longer to ACK that mode, hence longer delays.
-    def lcdcommand(self, str):
+    def lcdcommand(self, string):
         self.GPIO.output(self.iomap[1], 1)
         usleep(500)
         self.GPIO.output(self.iomap[0], 0)
         iteration = 0
-        for idr in str:
+        for idr in string:
             self.GPIO.output(self.iomap[iteration+2], int(idr))
             iteration = iteration + 1
             if iteration == 4:
@@ -87,8 +86,8 @@ class lcd_driver:
         return
 
   # LCD Data mode
-    def lcdprint(self, str):
-        for char in str:
+    def lcdprint(self, string):
+        for char in string:
             # Binary character value
             bitmap = bin(ord(char))[2:].zfill(8)
             self.GPIO.output(self.iomap[1], 1)
@@ -99,67 +98,67 @@ class lcd_driver:
                 self.GPIO.output(self.iomap[iteration+2], int(idr))
                 iteration = iteration + 1
                 if iteration == 4:
-                  iteration = 0
-                  usleep(20)
-                  self.GPIO.output(self.iomap[1], 0)
-                  usleep(20)
-                  self.GPIO.output(self.iomap[1], 1)
-                  usleep(20)
+                    iteration = 0
+                    usleep(20)
+                    self.GPIO.output(self.iomap[1], 0)
+                    usleep(20)
+                    self.GPIO.output(self.iomap[1], 1)
+                    usleep(20)
         return
 
   #duty   0 = on
   #duty 100 = off
-    def setRed(self):
+    def set_red(self):
         self.PWM.start(self.R, 0) #R P8_34
         self.PWM.start(self.G, 100) #G P8_45
         self.PWM.start(self.B, 100) #B P8_46
 
-    def setOrange(self):
+    def set_orange(self):
         self.PWM.start(self.R, 0) #R P8_34
         self.PWM.start(self.G, 50) #G P8_45
         self.PWM.start(self.B, 100) #B P8_46
 
-    def setYellow(self):
+    def set_yellow(self):
         self.PWM.start(self.R, 0) #R P8_34
         self.PWM.start(self.G, 0) #G P8_45
         self.PWM.start(self.B, 100) #B P8_46
 
-    def setGreen(self):
+    def set_green(self):
         self.PWM.start(self.R, 100) #R P8_34
         self.PWM.start(self.G, 0) #G P8_45
         self.PWM.start(self.B, 100) #B P8_46
 
-    def setCyan(self):
+    def set_cyan(self):
         self.PWM.start(self.R, 100) #R P8_34
         self.PWM.start(self.G, 0) #G P8_45
         self.PWM.start(self.B, 0) #B P8_46
 
-    def setBlue(self):
+    def set_blue(self):
         self.PWM.start(self.R, 100) #R P8_34
         self.PWM.start(self.G, 100) #G P8_45
         self.PWM.start(self.B, 0) #B P8_46
 
-    def setPurple(self):
+    def set_purple(self):
         self.PWM.start(self.R, 50) #R P8_34
         self.PWM.start(self.G, 100) #G P8_45
         self.PWM.start(self.B, 0) #B P8_46
 
-    def setViolet(self):
+    def set_violet(self):
         self.PWM.start(self.R, 0) #R P8_34
         self.PWM.start(self.G, 100) #G P8_45
         self.PWM.start(self.B, 0) #B P8_46
 
-    def setBlack(self):
+    def set_black(self):
         self.PWM.start(self.R, 100) #R P8_34
         self.PWM.start(self.G, 100) #G P8_45
         self.PWM.start(self.B, 100) #B P8_46
 
-    def setGray(self):
+    def set_gray(self):
         self.PWM.start(self.R, 50) #R P8_34
         self.PWM.start(self.G, 50) #G P8_45
         self.PWM.start(self.B, 50) #B P8_46
 
-    def setWhite(self):
+    def set_white(self):
         self.PWM.start(self.R, 0) #R P8_34
         self.PWM.start(self.G, 0) #G P8_45
         self.PWM.start(self.B, 0) #B P8_46
