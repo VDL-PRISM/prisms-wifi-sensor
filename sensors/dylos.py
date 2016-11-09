@@ -19,8 +19,9 @@ def setup(port, baudrate):
 
     def read():
         line = ser.readline()
-        small, large = [int(x) for x in line.split(b',')]
-        LOGGER.debug("Read from serial port: %s %s", small, large)
+        LOGGER.debug("Read from serial port: %s", line)
+        small, large = [int(x.strip()) for x in line.split(b',')]
+        LOGGER.debug("Small: %s, Large: %s", small, large)
         return {"small": small, "large": large}
 
     return read
