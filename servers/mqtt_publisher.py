@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import logging
 import time
@@ -32,7 +33,9 @@ def run(config, hostname, queue, lcd):
             queue.flush()
 
         # Update LCD
-        lcd.write_queue_size(len(queue))
+        lcd.queue_size = len(queue)
+        lcd.update_queue_time = datetime.now()
+        lcd.display_data()
 
         # Try publishing the next message
         do_publish(client, queue)
@@ -40,7 +43,7 @@ def run(config, hostname, queue, lcd):
     while True:
         try:
             LOGGER.info("Connecting to MQTT broker")
-            lcd.write(line2="Connecting ({})".format(connect_counter))
+            lcd.display(line2="Connecting ({})".format(connect_counter))
 
             client = mqtt.Client(client_id=hostname, userdata=queue, clean_session=False)
             client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
@@ -49,7 +52,7 @@ def run(config, hostname, queue, lcd):
             client.on_connect = on_connect
 
             client.connect(mqtt_config['broker'], mqtt_config['port'])
-            lcd.write(line2="Connected!")
+            lcd.display(line2="Connected!")
 
             client.loop_forever()
 
@@ -61,7 +64,7 @@ def run(config, hostname, queue, lcd):
             # Keep going no matter of the exception -- hopefully it will fix itself
             LOGGER.exception("An exception occurred!")
             LOGGER.warning("Sleeping for 30 seconds and trying again...")
-            lcd.write(line2="Waiting...")
+            lcd.display(line2="Waiting...")
             connect_counter += 1
 
             time.sleep(30)
