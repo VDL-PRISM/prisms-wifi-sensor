@@ -9,7 +9,6 @@ import aiocoap
 
 
 LOGGER = logging.getLogger("mqtt_sensor")
-CHUNK_SIZE = 20
 
 
 class DataResource(resource.Resource):
@@ -19,18 +18,22 @@ class DataResource(resource.Resource):
         self.lcd = lcd
 
     async def render_get(self, request):
-        ack = struct.unpack('I', request.payload)[0]
+        LOGGER.debug("Received GET request with payload: %s", request.payload)
+        ack, size = struct.unpack('!HH', request.payload)
 
         # Delete the amount of data that has been ACK'd
+        LOGGER.debug("Deleting %s items from the queue", ack)
         self.queue.delete(ack)
+        self.queue.flush()
 
+        LOGGER.debug("Updating LCD")
         self.lcd.queue_size = len(self.queue)
         self.lcd.update_queue_time = datetime.now()
         self.lcd.display_data()
 
         # Get data from queue
-        size = CHUNK_SIZE if len(self.queue) > CHUNK_SIZE else len(self.queue)
-        LOGGER.debug("Getting %s from the queue", size)
+        size = min(size, len(self.queue))
+        LOGGER.debug("Getting %s items from the queue", size)
         data = self.queue.peek(size)
 
         # Create and send response
