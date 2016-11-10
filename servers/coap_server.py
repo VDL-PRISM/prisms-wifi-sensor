@@ -6,6 +6,7 @@ import struct
 
 import aiocoap.resource as resource
 import aiocoap
+import msgpack
 
 
 LOGGER = logging.getLogger("mqtt_sensor")
@@ -36,10 +37,17 @@ class DataResource(resource.Resource):
         LOGGER.debug("Getting %s items from the queue", size)
         data = self.queue.peek(size)
 
+        # Make sure data is always a list
+        if not isinstance(data, list):
+            data = [data]
+
+        # Transform data
+        data = [[v for k, v in sorted(d.items())] for d in data]
+
         # Create and send response
         response = aiocoap.Message(
             code=aiocoap.CONTENT,
-            payload=json.dumps({'data': data}).encode('utf-8'))
+            payload=msgpack.packb(data))
         return response
 
 

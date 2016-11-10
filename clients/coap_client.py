@@ -5,6 +5,7 @@ from pprint import pprint
 import struct
 
 from aiocoap import *
+import msgpack
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,7 +22,7 @@ async def main(address, acks, size):
         print(e)
     else:
         # print('Result: %s\n%r'%(response.code, response.payload))
-        data = json.loads(response.payload.decode('utf-8'))
+        data = msgpack.unpackb(response.payload, use_list=False)
         pprint(data)
 
 if __name__ == "__main__":
