@@ -56,7 +56,7 @@ class AirQualityResource(Resource):
 def run(config, hostname, queue, lcd):
     # Start server
     try:
-        server = CoAPServer(("127.0.0.1", 5683))
+        server = CoAPServer(("224.0.1.187", 5683), multicast=True)
         server.add_resource('air_quality/', AirQualityResource(queue, lcd))
         server.listen()
     except KeyboardInterrupt:
