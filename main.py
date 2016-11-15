@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import argparse
 from datetime import datetime
 import logging
@@ -14,7 +15,7 @@ from sensors.lcd import LCDWriter
 
 
 logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+                    format='%(asctime)s:%(threadName)s:%(levelname)s:%(name)s:%(message)s')
 LOGGER = logging.getLogger(__name__)
 
 methods = {'mqtt_publisher': mqtt_publisher.run,
@@ -91,7 +92,5 @@ t.daemon = True
 t.start()
 
 # Start server
-try:
-    methods[args.method](config, hostname, queue, lcd)
-except KeyboardInterrupt:
-    print("Qutting...")
+methods[args.method](config, hostname, queue, lcd)
+

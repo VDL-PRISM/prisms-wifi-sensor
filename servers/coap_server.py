@@ -1,31 +1,37 @@
-import asyncio
+from __future__ import print_function, division
 from datetime import datetime
 import json
 import logging
 import struct
 
-import aiocoap.resource as resource
-import aiocoap
+from coapthon.server.coap import CoAP as CoAPServer
+from coapthon.resources.resource import Resource
 import msgpack
 
 
 LOGGER = logging.getLogger("mqtt_sensor")
 
-
-class DataResource(resource.Resource):
+class AirQualityResource(Resource):
     def __init__(self, queue, lcd):
-        super(DataResource, self).__init__()
+        super(AirQualityResource, self).__init__("AirQualityResource")
         self.queue = queue
         self.lcd = lcd
+        self.resource_type = "rt1"
+        self.content_type = "text/plain"
+        self.interface_type = "if1"
 
-    async def render_get(self, request):
-        LOGGER.debug("Received GET request with payload: %s", request.payload)
+        self.payload = None
+
+    def render_GET(self, request):
+        LOGGER.debug("Received GET request with payload: %s", repr(request.payload))
         ack, size = struct.unpack('!HH', request.payload)
 
         # Delete the amount of data that has been ACK'd
         LOGGER.debug("Deleting %s items from the queue", ack)
         self.queue.delete(ack)
-        self.queue.flush()
+
+        # TODO: Think about when to flush this
+        # self.queue.flush()
 
         LOGGER.debug("Updating LCD")
         self.lcd.queue_size = len(self.queue)
@@ -43,23 +49,18 @@ class DataResource(resource.Resource):
 
         # Transform data
         data = [[v for k, v in sorted(d.items())] for d in data]
+        self.payload = msgpack.packb(data)
 
-        # Create and send response
-        response = aiocoap.Message(
-            code=aiocoap.CONTENT,
-            payload=msgpack.packb(data))
-        return response
-
+        return self
 
 def run(config, hostname, queue, lcd):
     # Start server
     try:
-        root = resource.Site()
-        root.add_resource(('.well-known', 'core'),
-                          resource.WKCResource(root.get_resources_as_linkheader))
-        root.add_resource(('data',), DataResource(queue, lcd))
-
-        asyncio.async(aiocoap.Context.create_server_context(root))
-        asyncio.get_event_loop().run_forever()
+        server = CoAPServer(("127.0.0.1", 5683))
+        server.add_resource('air_quality/', AirQualityResource(queue, lcd))
+        server.listen()
     except KeyboardInterrupt:
-        pass
+        LOGGER.debug("Shutting down server")
+        server.close()
+
+

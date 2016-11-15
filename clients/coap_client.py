@@ -1,35 +1,170 @@
-import asyncio
+from __future__ import print_function, division
 import json
 import logging
+from multiprocessing import Queue
 from pprint import pprint
+import random
 import struct
+import threading
 
-from aiocoap import *
+from coapthon.messages.message import Message
+from coapthon import defines
+from coapthon.client.coap import CoAP
+from coapthon.messages.request import Request
+from coapthon.utils import generate_random_token, parse_uri
 import msgpack
 
 logging.basicConfig(level=logging.INFO)
 
-async def main(address, acks, size):
-    protocol = await Context.create_client_context()
+class Client(object):
+    def __init__(self, server):
+        self.server = server
+        self.protocol = CoAP(self.server, random.randint(1, 65535), self._wait_response)
+        self.queue = Queue()
 
-    request = Message(code=GET, payload=struct.pack('!HH', acks, size))
-    request.set_request_uri('coap://{}/data'.format(address))
+    def _wait_response(self, message):
+        if message.code != defines.Codes.CONTINUE.number:
+            self.queue.put(message)
 
+    def stop(self):
+        self.protocol.stopped.set()
+        self.queue.put(None)
+
+    def _thread_body(self, request, callback):
+        self.protocol.send_message(request)
+        while not self.protocol.stopped.isSet():
+            response = self.queue.get(block=True)
+            callback(response)
+
+    def cancel_observing(self, response, send_rst):  # pragma: no cover
+        if send_rst:
+            message = Message()
+            message.destination = self.server
+            message.code = defines.Codes.EMPTY.number
+            message.type = defines.Types["RST"]
+            message.token = response.token
+            message.mid = response.mid
+            self.protocol.send_message(message)
+        self.stop()
+
+    def get(self, path, payload=None, callback=None):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.GET.number
+        request.uri_path = path
+        request.payload = payload
+
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def observe(self, path, callback):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.GET.number
+        request.uri_path = path
+        request.observe = 0
+
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def delete(self, path, callback=None):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.DELETE.number
+        request.uri_path = path
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def post(self, path, payload, callback=None):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.POST.number
+        request.token = generate_random_token(2)
+        request.uri_path = path
+        request.payload = payload
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def put(self, path, payload, callback=None):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.PUT.number
+        request.uri_path = path
+        request.payload = payload
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def discover(self, callback=None):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.GET.number
+        request.uri_path = defines.DISCOVERY_URL
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def send_request(self, request, callback=None):  # pragma: no cover
+        if callback is not None:
+            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread.start()
+        else:
+            self.protocol.send_message(request)
+            response = self.queue.get(block=True)
+            return response
+
+    def send_empty(self, empty):  # pragma: no cover
+        self.protocol.send_message(empty)
+
+def main(path, acks, size):
     try:
-        response = await protocol.request(request).response
-    except Exception as e:
-        print('Failed to fetch resource:')
-        print(e)
-    else:
-        # print('Result: %s\n%r'%(response.code, response.payload))
+        host, port, path = parse_uri(path)
+        client = Client(server=(host, port))
+
+        response = client.get(path, payload=struct.pack('!HH', acks, size))
         data = msgpack.unpackb(response.payload, use_list=False)
         pprint(data)
+
+    except KeyboardInterrupt:
+        print("Stopping")
+    finally:
+        client.stop()
+
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 4:
-        print("{} ip_address acks size".format(__file__))
+        print("{} path acks size".format(__file__))
     else:
-        asyncio.get_event_loop().run_until_complete(main(sys.argv[1],
-                                                         int(sys.argv[2]),
-                                                         int(sys.argv[3])))
+        main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
+
+
+

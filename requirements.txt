@@ -1,6 +1,4 @@
 Adafruit-BBIO==0.0.30
-aiocoap==0.2
-LinkHeader==0.4.3
 msgpack-python==0.4.8
 paho-mqtt==1.2
 pyserial==3.1.1
