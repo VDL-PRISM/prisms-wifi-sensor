@@ -62,9 +62,9 @@ def read_data():
             # combine data together
             data = {"sampletime": now,
                     "sequence": sequence_number,
-                    "monitorname": hostname,
-                    **air_data,
-                    **temp_data}
+                    "monitorname": hostname}
+            data.update(air_data)
+            data.update(temp_data)
 
             # Save data for later
             queue.push(data)
