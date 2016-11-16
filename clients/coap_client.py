@@ -147,8 +147,13 @@ class Client(object):
 def main(path, acks, size):
     try:
         host, port, path = parse_uri(path)
-        client = Client(server=(host, port))
+    except Exception:
+        print("Not a valid path: {}".format(path))
+        print("example: coap://127.0.0.1/data")
+        return
 
+    try:
+        client = Client(server=(host, port))
         response = client.get(path, payload=struct.pack('!HH', acks, size))
         data = msgpack.unpackb(response.payload, use_list=False)
         pprint(data)
