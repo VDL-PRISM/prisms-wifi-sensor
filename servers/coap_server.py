@@ -23,35 +23,38 @@ class AirQualityResource(Resource):
         self.payload = None
 
     def render_GET(self, request):
-        LOGGER.debug("Received GET request with payload: %s", repr(request.payload))
-        ack, size = struct.unpack('!HH', request.payload)
+        try:
+            LOGGER.debug("Received GET request with payload: %s", repr(request.payload))
+            ack, size = struct.unpack('!HH', request.payload)
 
-        # Delete the amount of data that has been ACK'd
-        LOGGER.debug("Deleting %s items from the queue", ack)
-        self.queue.delete(ack)
+            # Delete the amount of data that has been ACK'd
+            LOGGER.debug("Deleting %s items from the queue", ack)
+            self.queue.delete(ack)
 
-        # TODO: Think about when to flush this
-        # self.queue.flush()
+            # TODO: Think about when to flush this
+            # self.queue.flush()
 
-        LOGGER.debug("Updating LCD")
-        self.lcd.queue_size = len(self.queue)
-        self.lcd.update_queue_time = datetime.now()
-        self.lcd.display_data()
+            LOGGER.debug("Updating LCD")
+            self.lcd.queue_size = len(self.queue)
+            self.lcd.update_queue_time = datetime.now()
+            self.lcd.display_data()
 
-        # Get data from queue
-        size = min(size, len(self.queue))
-        LOGGER.debug("Getting %s items from the queue", size)
-        data = self.queue.peek(size)
+            # Get data from queue
+            size = min(size, len(self.queue))
+            LOGGER.debug("Getting %s items from the queue", size)
+            data = self.queue.peek(size)
 
-        # Make sure data is always a list
-        if not isinstance(data, list):
-            data = [data]
+            # Make sure data is always a list
+            if not isinstance(data, list):
+                data = [data]
 
-        # Transform data
-        data = [[v for k, v in sorted(d.items())] for d in data]
-        self.payload = msgpack.packb(data)
+            # Transform data
+            data = [[v for k, v in sorted(d.items())] for d in data]
+            self.payload = msgpack.packb(data)
 
-        return self
+            return self
+        except Exception:
+            LOGGER.exception("An error occurred!")
 
 def run(config, hostname, queue, lcd):
     # Start server
