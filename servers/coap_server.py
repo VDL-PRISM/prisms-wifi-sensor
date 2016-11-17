@@ -48,8 +48,6 @@ class AirQualityResource(Resource):
             if not isinstance(data, list):
                 data = [data]
 
-            # Transform data
-            data = [[v for k, v in sorted(d.items())] for d in data]
             self.payload = msgpack.packb(data)
 
             return self

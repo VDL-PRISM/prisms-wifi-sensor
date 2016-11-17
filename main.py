@@ -6,6 +6,7 @@ import socket
 from threading import Thread
 import time
 
+import msgpack
 from persistent_queue import PersistentQueue
 import yaml
 
@@ -31,7 +32,9 @@ args = parser.parse_args()
 config = config = yaml.load(args.config)
 
 LOGGER.info("Loading persistent queue")
-queue = PersistentQueue('dylos.queue')
+queue = PersistentQueue('dylos.queue',
+                        dumps=msgpack.packb,
+                        loads=msgpack.unpackb)
 
 LOGGER.info("Getting host name")
 hostname = socket.gethostname()
@@ -60,12 +63,16 @@ def read_data():
             now = time.time()
             sequence_number += 1
 
-            # combine data together
+            # Combine data together
             data = {"sampletime": now,
                     "sequence": sequence_number,
                     "monitorname": hostname}
             data.update(air_data)
             data.update(temp_data)
+
+            # Transform the data
+            # [humidity, large, monitorname, sampletime, sequence, small, temperature]
+            data = [v for k, v in sorted(data.items())]
 
             # Save data for later
             queue.push(data)
