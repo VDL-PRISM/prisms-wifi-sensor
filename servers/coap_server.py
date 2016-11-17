@@ -30,9 +30,7 @@ class AirQualityResource(Resource):
             # Delete the amount of data that has been ACK'd
             LOGGER.debug("Deleting %s items from the queue", ack)
             self.queue.delete(ack)
-
-            # TODO: Think about when to flush this
-            # self.queue.flush()
+            self.queue.flush()
 
             LOGGER.debug("Updating LCD")
             self.lcd.queue_size = len(self.queue)
