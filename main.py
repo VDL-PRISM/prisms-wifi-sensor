@@ -72,7 +72,7 @@ def read_data():
 
             # Transform the data
             # [humidity, large, monitorname, sampletime, sequence, small, temperature]
-            data = [v for k, v in sorted(data.items())]
+            data = [[v for k, v in sorted(data.items())]]
 
             # Save data for later
             queue.push(data)
