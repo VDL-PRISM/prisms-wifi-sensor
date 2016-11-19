@@ -66,9 +66,9 @@ def read_data():
             # Combine data together
             data = {"sampletime": now,
                     "sequence": sequence_number,
-                    "monitorname": hostname}
-            data.update(air_data)
-            data.update(temp_data)
+                    "monitorname": hostname,
+                    **air_data,
+                    **temp_data}
 
             # Transform the data
             # [humidity, large, monitorname, sampletime, sequence, small, temperature]
