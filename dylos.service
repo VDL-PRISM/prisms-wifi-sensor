@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/root/dylos
-ExecStart=/root/pyenv/versions/3.5.2/envs/dylos/bin/python main.py mqtt_publisher > dylos.log 2>&1
+ExecStart=/root/pyenv/versions/3.5.2/envs/dylos/bin/python main.py coap_server > outputfile.log 2>&1
 
 [Install]
 WantedBy=multi-user.target
