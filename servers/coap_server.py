@@ -9,7 +9,7 @@ from coapthon.resources.resource import Resource
 import msgpack
 
 
-LOGGER = logging.getLogger("mqtt_sensor")
+LOGGER = logging.getLogger(__name__)
 
 class AirQualityResource(Resource):
     def __init__(self, queue, lcd):
@@ -55,6 +55,7 @@ class AirQualityResource(Resource):
 def run(config, hostname, queue, lcd):
     # Start server
     try:
+        LOGGER.info("Starting server")
         server = CoAPServer(("224.0.1.187", 5683), multicast=True)
         server.add_resource('air_quality/', AirQualityResource(queue, lcd))
         server.listen()
