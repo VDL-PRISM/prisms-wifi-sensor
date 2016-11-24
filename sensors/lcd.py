@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 
 import Adafruit_BBIO.GPIO as GPIO
@@ -166,6 +167,8 @@ class lcd_driver:
 
 class LCDWriter:
     def __init__(self):
+        self.lock = threading.Lock()
+
         self.line1 = ""
         self.line2 = ""
 
@@ -196,23 +199,24 @@ class LCDWriter:
         self.display(line1=line1, line2=line2)
 
     def display(self, line1=None, line2=None):
-        if line1 is not None:
-            self.line1 = line1
+        with self.lock:
+            if line1 is not None:
+                self.line1 = line1
 
-        if line2 is not None:
-            self.line2 = line2
+            if line2 is not None:
+                self.line2 = line2
 
-        LOGGER.debug("Line 1: %s", self.line1)
-        LOGGER.debug("Line 2: %s", self.line2)
+            LOGGER.debug("Line 1: %s", self.line1)
+            LOGGER.debug("Line 2: %s", self.line2)
 
-        if self.lcd is None:
-            LOGGER.warning("LCD is not connected")
-        else:
-            try:
-                self.lcd.lcdcommand('00000001')  # Reset
-                self.lcd.lcdprint(self.line1)
-                self.lcd.lcdcommand('11000000')  # Move cursor down
-                self.lcd.lcdprint(self.line2)
-                self.lcd.lcdcommand('10000000')  # Move cursor to beginning
-            except Exception as e:
-                LOGGER.error("An exception occurred while writing to LCD: %s", e)
+            if self.lcd is None:
+                LOGGER.warning("LCD is not connected")
+            else:
+                try:
+                    self.lcd.lcdcommand('00000001')  # Reset
+                    self.lcd.lcdprint(self.line1)
+                    self.lcd.lcdcommand('11000000')  # Move cursor down
+                    self.lcd.lcdprint(self.line2)
+                    self.lcd.lcdcommand('10000000')  # Move cursor to beginning
+                except Exception as e:
+                    LOGGER.error("An exception occurred while writing to LCD: %s", e)
