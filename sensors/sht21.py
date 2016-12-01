@@ -9,6 +9,7 @@ def get_temp():
 
     return float(temp) / 1000
 
+
 def get_humidity():
     with open('/sys/bus/i2c/drivers/sht21/1-0040/humidity1_input') as f:
         humidity = f.readline().strip()
@@ -21,7 +22,8 @@ def setup():
         get_temp()
         sht_present = True
     except Exception as e:
-        LOGGER.warning("Exception %s: Probably means there is no sht sensor available", e)
+        LOGGER.warning("Exception %s: Probably means there is no sht sensor"
+                       " available", e)
         sht_present = False
 
     def read():

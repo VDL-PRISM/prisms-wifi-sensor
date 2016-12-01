@@ -16,7 +16,8 @@ from sensors.lcd import LCDWriter
 
 
 logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s:%(threadName)s:%(levelname)s:%(name)s:%(message)s')
+                    format='%(asctime)s:%(threadName)s:%(levelname)s:'
+                           '%(name)s:%(message)s')
 LOGGER = logging.getLogger(__name__)
 
 methods = {'mqtt_publisher': mqtt_publisher.run,
@@ -51,6 +52,7 @@ air_sensor = dylos.setup(config['serial']['port'],
 LOGGER.info("Starting temperature sensor")
 temp_sensor = sht21.setup()
 
+
 # Read data from the sensor
 def read_data():
     sequence_number = 0
@@ -71,7 +73,8 @@ def read_data():
                     **temp_data}
 
             # Transform the data
-            # [humidity, large, monitorname, sampletime, sequence, small, temperature]
+            # [humidity, large, monitorname, sampletime, sequence, small,
+            #  temperature]
             data = [[v for k, v in sorted(data.items())]]
 
             # Save data for later
@@ -87,12 +90,14 @@ def read_data():
         except KeyboardInterrupt:
             break
         except Exception:
-            # Keep going no matter of the exception -- hopefully it will fix itself
+            # Keep going no matter of the exception
+            # Hopefully it will fix itself
             LOGGER.exception("An exception occurred!")
 
             LOGGER.debug("Waiting 15 seconds and then trying again")
             time.sleep(15)
             continue
+
 
 t = Thread(target=read_data)
 t.daemon = True
@@ -100,4 +105,3 @@ t.start()
 
 # Start server
 methods[args.method](config, hostname, queue, lcd)
-
