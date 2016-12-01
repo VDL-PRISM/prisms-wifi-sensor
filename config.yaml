@@ -1,14 +1,3 @@
 serial:
   port: /dev/ttyO1
   baudrate: 9600
-
-mqtt:
-  username: prisms
-  password: prisms
-  broker: prisms-gateway.local
-  port: 1883
-  topic: prisms/airquality/
-  qos: 1
-
-http:
-  port: 8123

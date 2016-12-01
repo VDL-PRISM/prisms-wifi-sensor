@@ -3,58 +3,82 @@ import argparse
 from datetime import datetime
 import logging
 import socket
+import struct
 from threading import Thread
 import time
 
+from coapthon.server.coap import CoAP as CoAPServer
+from coapthon.resources.resource import Resource
 import msgpack
 from persistent_queue import PersistentQueue
 import yaml
 
-from servers import mqtt_publisher, coap_server
 from sensors import dylos, sht21
 from sensors.lcd import LCDWriter
-
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(threadName)s:%(levelname)s:'
                            '%(name)s:%(message)s')
 LOGGER = logging.getLogger(__name__)
 
-methods = {'mqtt_publisher': mqtt_publisher.run,
-           'coap_server': coap_server.run}
 
-parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
-parser.add_argument('method', choices=methods.keys(),
-                    help='Type of transport to use')
-parser.add_argument('-c', '--config', type=argparse.FileType('r'),
-                    default=open('config.yaml'), help='Configuration file')
+# pylint: disable=abstract-method
+class AirQualityResource(Resource):
+    def __init__(self, queue, lcd):
+        super(AirQualityResource, self).__init__("AirQualityResource")
+        self.queue = queue
+        self.lcd = lcd
+        self.resource_type = "rt1"
+        self.content_type = "text/plain"
+        self.interface_type = "if1"
 
-args = parser.parse_args()
-config = config = yaml.load(args.config)
+        self.payload = None
 
-LOGGER.info("Loading persistent queue")
-queue = PersistentQueue('dylos.queue',
-                        dumps=msgpack.packb,
-                        loads=msgpack.unpackb)
+    def render_GET(self, request):
+        try:
+            LOGGER.debug("Received GET request with payload: %s",
+                         repr(request.payload))
+            ack, size = struct.unpack('!HH', request.payload)
 
-LOGGER.info("Getting host name")
-hostname = socket.gethostname()
-LOGGER.info("Hostname: %s", hostname)
+            # Delete the amount of data that has been ACK'd
+            LOGGER.debug("Deleting %s items from the queue", ack)
+            self.queue.delete(ack)
+            self.queue.flush()
 
-# Set up sensors
-LOGGER.info("Starting LCD screen")
-lcd = LCDWriter()
+            LOGGER.debug("Updating LCD")
+            self.lcd.queue_size = len(self.queue)
+            self.lcd.update_queue_time = datetime.now()
+            self.lcd.display_data()
 
-LOGGER.info("Starting air quality sensor")
-air_sensor = dylos.setup(config['serial']['port'],
-                         config['serial']['baudrate'])
+            # Get data from queue
+            size = min(size, len(self.queue))
+            LOGGER.debug("Getting %s items from the queue", size)
+            data = self.queue.peek(size)
 
-LOGGER.info("Starting temperature sensor")
-temp_sensor = sht21.setup()
+            # Make sure data is always a list
+            if isinstance(data, list) and not isinstance(data[0], list):
+                data = [data]
+
+            self.payload = msgpack.packb(data)
+
+            return self
+        except Exception:
+            LOGGER.exception("An error occurred!")
 
 
 # Read data from the sensor
-def read_data():
+def read_data(config, lcd, queue):
+    LOGGER.info("Getting host name")
+    hostname = socket.gethostname()
+    LOGGER.info("Hostname: %s", hostname)
+
+    LOGGER.info("Starting air quality sensor")
+    air_sensor = dylos.setup(config['serial']['port'],
+                             config['serial']['baudrate'])
+
+    LOGGER.info("Starting temperature sensor")
+    temp_sensor = sht21.setup()
+
     sequence_number = 0
 
     while True:
@@ -98,10 +122,38 @@ def read_data():
             time.sleep(15)
             continue
 
+def main():
+    parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
+    parser.add_argument('-c', '--config', type=argparse.FileType('r'),
+                        default=open('config.yaml'), help='Configuration file')
 
-t = Thread(target=read_data)
-t.daemon = True
-t.start()
+    args = parser.parse_args()
+    config = yaml.load(args.config)
 
-# Start server
-methods[args.method](config, hostname, queue, lcd)
+    LOGGER.info("Loading persistent queue")
+    queue = PersistentQueue('dylos.queue',
+                            dumps=msgpack.packb,
+                            loads=msgpack.unpackb)
+
+    # Set up sensors
+    LOGGER.info("Starting LCD screen")
+    lcd = LCDWriter()
+
+    # Start reading from sensors
+    sensor_thread = Thread(target=read_data, args=(config, lcd, queue))
+    sensor_thread.daemon = True
+    sensor_thread.start()
+
+    # Start server
+    try:
+        LOGGER.info("Starting server")
+        server = CoAPServer(("224.0.1.187", 5683), multicast=True)
+        server.add_resource('air_quality/', AirQualityResource(queue, lcd))
+        server.listen()
+    except KeyboardInterrupt:
+        LOGGER.debug("Shutting down server")
+        server.close()
+
+
+if __name__ == '__main__':
+    main()
