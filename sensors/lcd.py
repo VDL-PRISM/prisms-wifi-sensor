@@ -8,28 +8,27 @@ import Adafruit_BBIO.PWM as PWM
 
 LOGGER = logging.getLogger(__name__)
 
-# To properly clock LCD I had to use exotic microsecond range sleep function
-usleep = lambda x: time.sleep(x/100000.0) # Can go higher, but will eat up whole CPU on that.
-ticks = time.time()
-i = 0
 
-class lcd_driver:
+# To properly clock LCD I had to use exotic microsecond range sleep function
+def usleep(sleep_time):
+    time.sleep(sleep_time / 100000.0)  # Can go higher, but will eat up whole CPU on that.
+
+
+class LCDDriver:
     def __init__(self):
         # IOMAP = [RS, CLK(E), B7, B6, B5, B4]
-        self.iomap = ["GPIO1_13", "GPIO1_12", "GPIO0_27", "GPIO1_14", "GPIO1_15", "GPIO0_26"]
+        self.iomap = ["GPIO1_13", "GPIO1_12", "GPIO0_27", "GPIO1_14",
+                      "GPIO1_15", "GPIO0_26"]
         # PWMMAP = [R, G, B]
         self.pwmmap = ["P8_34", "P8_45", "P8_46"]
-        self.R = "P8_34"
-        self.G = "P8_45"
-        self.B = "P8_46"
+        self.red = "P8_34"
+        self.green = "P8_45"
+        self.blue = "P8_46"
 
         self.GPIO = GPIO
         for pin in self.iomap:
             self.GPIO.setup(pin, GPIO.OUT)
 
-        #PWM.start(channel, duty, [defautls, unless otherwise stated]freq=2000, polarity=0)
-        #duty   0 = on
-        #duty 100 = off
         self.PWM = PWM
         for pin in self.pwmmap:
             self.PWM.start(pin, 0)
@@ -39,36 +38,25 @@ class lcd_driver:
     def setup(self):
         LOGGER.debug("Python HD44780 LCD Driver REV 2")
 
-        # lcdcommand('00000001')
+        self.lcdcommand('0011')  # \
+        self.lcdcommand('0011')  # | Initialization Sequence
+        self.lcdcommand('0011')  # /
+        self.lcdcommand('0010')  # 4BIT Mode
 
-        self.lcdcommand('0011') # \
-        self.lcdcommand('0011') # | Initialization Sequence
-        self.lcdcommand('0011') # /
-        self.lcdcommand('0010') # 4BIT Mode
+        self.lcdcommand('00000001')  # Reset
+        self.lcdcommand('00001100')  # Dispaly On
 
-        # lcdcommand('00001111')
-
-        self.lcdcommand('00000001') # Reset
-        self.lcdcommand('00001100') # Dispaly On
-
-      #  lcdcommand('00101000') # number of display lines and character font
-      #  lcdcommand('00001000') # Display off
-      #  lcdcommand('00000001') # Reset
-      #  lcdcommand('00001111') # Display On
-
-        #lcdcommand('11000000') # Shift to 2nd Line
         # Shift Reference
-        #10000000  Moves cursor to first address on the left of LINE 1
-        #11000000  Moves cursor to first address on the left of LINE 2
-        #10010100  Moves cursor to first address on the left of LINE 3
-        #11010100  Moves cursor to first address on the left of LINE 4
+        # 10000000  Moves cursor to first address on the left of LINE 1
+        # 11000000  Moves cursor to first address on the left of LINE 2
+        # 10010100  Moves cursor to first address on the left of LINE 3
+        # 11010100  Moves cursor to first address on the left of LINE 4
 
         LOGGER.debug("Transferring LCD Control to main loop")
         LOGGER.debug("Process PID: %s", os.getpid())
 
-
     # LCD instruction mode
-    # For some reason my LCD takes longer to ACK that mode, hence longer delays.
+    # For some reason my LCD takes longer to ACK that mode, hence longer delays
     def lcdcommand(self, string):
         self.GPIO.output(self.iomap[1], 1)
         usleep(500)
@@ -86,7 +74,7 @@ class lcd_driver:
                 usleep(500)
         return
 
-  # LCD Data mode
+    # LCD Data mode
     def lcdprint(self, string):
         for char in string:
             # Binary character value
@@ -107,64 +95,62 @@ class lcd_driver:
                     usleep(20)
         return
 
-  #duty   0 = on
-  #duty 100 = off
     def set_red(self):
-        self.PWM.start(self.R, 0) #R P8_34
-        self.PWM.start(self.G, 100) #G P8_45
-        self.PWM.start(self.B, 100) #B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_orange(self):
-        self.PWM.start(self.R, 0) #R P8_34
-        self.PWM.start(self.G, 50) #G P8_45
-        self.PWM.start(self.B, 100) #B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 50)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_yellow(self):
-        self.PWM.start(self.R, 0) #R P8_34
-        self.PWM.start(self.G, 0) #G P8_45
-        self.PWM.start(self.B, 100) #B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_green(self):
-        self.PWM.start(self.R, 100) #R P8_34
-        self.PWM.start(self.G, 0) #G P8_45
-        self.PWM.start(self.B, 100) #B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_cyan(self):
-        self.PWM.start(self.R, 100) #R P8_34
-        self.PWM.start(self.G, 0) #G P8_45
-        self.PWM.start(self.B, 0) #B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_blue(self):
-        self.PWM.start(self.R, 100) #R P8_34
-        self.PWM.start(self.G, 100) #G P8_45
-        self.PWM.start(self.B, 0) #B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_purple(self):
-        self.PWM.start(self.R, 50) #R P8_34
-        self.PWM.start(self.G, 100) #G P8_45
-        self.PWM.start(self.B, 0) #B P8_46
+        self.PWM.start(self.red, 50)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_violet(self):
-        self.PWM.start(self.R, 0) #R P8_34
-        self.PWM.start(self.G, 100) #G P8_45
-        self.PWM.start(self.B, 0) #B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_black(self):
-        self.PWM.start(self.R, 100) #R P8_34
-        self.PWM.start(self.G, 100) #G P8_45
-        self.PWM.start(self.B, 100) #B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_gray(self):
-        self.PWM.start(self.R, 50) #R P8_34
-        self.PWM.start(self.G, 50) #G P8_45
-        self.PWM.start(self.B, 50) #B P8_46
+        self.PWM.start(self.red, 50)  # R P8_34
+        self.PWM.start(self.green, 50)  # G P8_45
+        self.PWM.start(self.blue, 50)  # B P8_46
 
     def set_white(self):
-        self.PWM.start(self.R, 0) #R P8_34
-        self.PWM.start(self.G, 0) #G P8_45
-        self.PWM.start(self.B, 0) #B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
-
+# pylint: disable=too-many-instance-attributes
 class LCDWriter:
     def __init__(self):
         self.lock = threading.Lock()
@@ -180,10 +166,10 @@ class LCDWriter:
         self.update_queue_time = None
 
         try:
-            self.lcd = lcd_driver()
+            self.lcd = LCDDriver()
             self.lcd.setup()
-        except Exception as e:
-            LOGGER.error("Error occurred while setting up LCD screen: %s ", e)
+        except Exception as exp:
+            LOGGER.error("Error occurred while setting up LCD screen: %s ", exp)
             LOGGER.error("Probably means it is not connected.")
             self.lcd = None
 
@@ -193,7 +179,9 @@ class LCDWriter:
         update_queue_time = "" if self.update_queue_time is None else \
                             self.update_queue_time.strftime("%H:%M")
 
-        line1 = "{: >5} {: >4} {}".format(self.small, self.large, update_air_time)
+        line1 = "{: >5} {: >4} {}".format(self.small,
+                                          self.large,
+                                          update_air_time)
         line2 = "{: >10} {}".format(self.queue_size, update_queue_time)
 
         self.display(line1=line1, line2=line2)
@@ -218,5 +206,6 @@ class LCDWriter:
                     self.lcd.lcdcommand('11000000')  # Move cursor down
                     self.lcd.lcdprint(self.line2)
                     self.lcd.lcdcommand('10000000')  # Move cursor to beginning
-                except Exception as e:
-                    LOGGER.error("An exception occurred while writing to LCD: %s", e)
+                except Exception as exp:
+                    LOGGER.error(
+                        "An exception occurred while writing to LCD: %s", exp)

@@ -5,6 +5,7 @@ import serial
 
 LOGGER = logging.getLogger(__name__)
 
+
 def setup(port, baudrate):
     # Setup UART
     UART.setup("UART1")

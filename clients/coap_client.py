@@ -1,5 +1,4 @@
 from __future__ import print_function, division
-import json
 import logging
 from multiprocessing import Queue
 from pprint import pprint
@@ -16,10 +15,12 @@ import msgpack
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Client(object):
     def __init__(self, server):
         self.server = server
-        self.protocol = CoAP(self.server, random.randint(1, 65535), self._wait_response)
+        self.protocol = CoAP(self.server, random.randint(1, 65535),
+                             self._wait_response)
         self.queue = Queue()
 
     def _wait_response(self, message):
@@ -55,7 +56,8 @@ class Client(object):
         request.payload = payload
 
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -70,7 +72,8 @@ class Client(object):
         request.observe = 0
 
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -83,7 +86,8 @@ class Client(object):
         request.code = defines.Codes.DELETE.number
         request.uri_path = path
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -98,7 +102,8 @@ class Client(object):
         request.uri_path = path
         request.payload = payload
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -112,7 +117,8 @@ class Client(object):
         request.uri_path = path
         request.payload = payload
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -125,7 +131,8 @@ class Client(object):
         request.code = defines.Codes.GET.number
         request.uri_path = defines.DISCOVERY_URL
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -134,7 +141,8 @@ class Client(object):
 
     def send_request(self, request, callback=None):  # pragma: no cover
         if callback is not None:
-            thread = threading.Thread(target=self._thread_body, args=(request, callback))
+            thread = threading.Thread(target=self._thread_body,
+                                      args=(request, callback))
             thread.start()
         else:
             self.protocol.send_message(request)
@@ -143,6 +151,7 @@ class Client(object):
 
     def send_empty(self, empty):  # pragma: no cover
         self.protocol.send_message(empty)
+
 
 def main(path, acks, size):
     try:
@@ -170,6 +179,3 @@ if __name__ == "__main__":
         print("{} path acks size".format(__file__))
     else:
         main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
-
-
-

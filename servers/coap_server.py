@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 from datetime import datetime
-import json
 import logging
 import struct
 
@@ -11,6 +10,7 @@ import msgpack
 
 LOGGER = logging.getLogger(__name__)
 
+# pylint: disable=abstract-method
 class AirQualityResource(Resource):
     def __init__(self, queue, lcd):
         super(AirQualityResource, self).__init__("AirQualityResource")
@@ -24,7 +24,8 @@ class AirQualityResource(Resource):
 
     def render_GET(self, request):
         try:
-            LOGGER.debug("Received GET request with payload: %s", repr(request.payload))
+            LOGGER.debug("Received GET request with payload: %s",
+                         repr(request.payload))
             ack, size = struct.unpack('!HH', request.payload)
 
             # Delete the amount of data that has been ACK'd
@@ -52,6 +53,8 @@ class AirQualityResource(Resource):
         except Exception:
             LOGGER.exception("An error occurred!")
 
+
+# pylint: disable=unused-argument
 def run(config, hostname, queue, lcd):
     # Start server
     try:
@@ -62,5 +65,3 @@ def run(config, hostname, queue, lcd):
     except KeyboardInterrupt:
         LOGGER.debug("Shutting down server")
         server.close()
-
-
