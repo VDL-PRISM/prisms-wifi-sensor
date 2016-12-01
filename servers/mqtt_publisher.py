@@ -19,7 +19,8 @@ def run(config, hostname, queue, lcd):
         client.publish(mqtt_config['topic'] + hostname, json.dumps(data),
                        mqtt_config['qos'])
 
-    def on_connect(client, queue, flags, rc):
+    # pylint: disable=unused-argument
+    def on_connect(client, queue, flags, result_code):
         LOGGER.info("Connected to MQTT broker")
         do_publish(client, queue)
 
@@ -63,7 +64,7 @@ def run(config, hostname, queue, lcd):
             LOGGER.debug("Cleaning up MQTT publisher")
             queue.flush()
             break
-        except Exception as e:
+        except Exception:
             # Keep going no matter of the exception
             # Hopefully it will fix itself
             LOGGER.exception("An exception occurred!")

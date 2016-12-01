@@ -7,25 +7,23 @@ import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_BBIO.PWM as PWM
 
 LOGGER = logging.getLogger(__name__)
-ticks = time.time()
-i = 0
 
 
 # To properly clock LCD I had to use exotic microsecond range sleep function
-def usleep(x):
-    time.sleep(x/100000.0)  # Can go higher, but will eat up whole CPU on that.
+def usleep(sleep_time):
+    time.sleep(sleep_time / 100000.0)  # Can go higher, but will eat up whole CPU on that.
 
 
-class lcd_driver:
+class LCDDriver:
     def __init__(self):
         # IOMAP = [RS, CLK(E), B7, B6, B5, B4]
         self.iomap = ["GPIO1_13", "GPIO1_12", "GPIO0_27", "GPIO1_14",
                       "GPIO1_15", "GPIO0_26"]
         # PWMMAP = [R, G, B]
         self.pwmmap = ["P8_34", "P8_45", "P8_46"]
-        self.R = "P8_34"
-        self.G = "P8_45"
-        self.B = "P8_46"
+        self.red = "P8_34"
+        self.green = "P8_45"
+        self.blue = "P8_46"
 
         self.GPIO = GPIO
         for pin in self.iomap:
@@ -98,61 +96,61 @@ class lcd_driver:
         return
 
     def set_red(self):
-        self.PWM.start(self.R, 0)  # R P8_34
-        self.PWM.start(self.G, 100)  # G P8_45
-        self.PWM.start(self.B, 100)  # B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_orange(self):
-        self.PWM.start(self.R, 0)  # R P8_34
-        self.PWM.start(self.G, 50)  # G P8_45
-        self.PWM.start(self.B, 100)  # B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 50)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_yellow(self):
-        self.PWM.start(self.R, 0)  # R P8_34
-        self.PWM.start(self.G, 0)  # G P8_45
-        self.PWM.start(self.B, 100)  # B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_green(self):
-        self.PWM.start(self.R, 100)  # R P8_34
-        self.PWM.start(self.G, 0)  # G P8_45
-        self.PWM.start(self.B, 100)  # B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_cyan(self):
-        self.PWM.start(self.R, 100)  # R P8_34
-        self.PWM.start(self.G, 0)  # G P8_45
-        self.PWM.start(self.B, 0)  # B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_blue(self):
-        self.PWM.start(self.R, 100)  # R P8_34
-        self.PWM.start(self.G, 100)  # G P8_45
-        self.PWM.start(self.B, 0)  # B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_purple(self):
-        self.PWM.start(self.R, 50)  # R P8_34
-        self.PWM.start(self.G, 100)  # G P8_45
-        self.PWM.start(self.B, 0)  # B P8_46
+        self.PWM.start(self.red, 50)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_violet(self):
-        self.PWM.start(self.R, 0)  # R P8_34
-        self.PWM.start(self.G, 100)  # G P8_45
-        self.PWM.start(self.B, 0)  # B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
     def set_black(self):
-        self.PWM.start(self.R, 100)  # R P8_34
-        self.PWM.start(self.G, 100)  # G P8_45
-        self.PWM.start(self.B, 100)  # B P8_46
+        self.PWM.start(self.red, 100)  # R P8_34
+        self.PWM.start(self.green, 100)  # G P8_45
+        self.PWM.start(self.blue, 100)  # B P8_46
 
     def set_gray(self):
-        self.PWM.start(self.R, 50)  # R P8_34
-        self.PWM.start(self.G, 50)  # G P8_45
-        self.PWM.start(self.B, 50)  # B P8_46
+        self.PWM.start(self.red, 50)  # R P8_34
+        self.PWM.start(self.green, 50)  # G P8_45
+        self.PWM.start(self.blue, 50)  # B P8_46
 
     def set_white(self):
-        self.PWM.start(self.R, 0)  # R P8_34
-        self.PWM.start(self.G, 0)  # G P8_45
-        self.PWM.start(self.B, 0)  # B P8_46
+        self.PWM.start(self.red, 0)  # R P8_34
+        self.PWM.start(self.green, 0)  # G P8_45
+        self.PWM.start(self.blue, 0)  # B P8_46
 
-
+# pylint: disable=too-many-instance-attributes
 class LCDWriter:
     def __init__(self):
         self.lock = threading.Lock()
@@ -168,10 +166,10 @@ class LCDWriter:
         self.update_queue_time = None
 
         try:
-            self.lcd = lcd_driver()
+            self.lcd = LCDDriver()
             self.lcd.setup()
-        except Exception as e:
-            LOGGER.error("Error occurred while setting up LCD screen: %s ", e)
+        except Exception as exp:
+            LOGGER.error("Error occurred while setting up LCD screen: %s ", exp)
             LOGGER.error("Probably means it is not connected.")
             self.lcd = None
 
@@ -208,6 +206,6 @@ class LCDWriter:
                     self.lcd.lcdcommand('11000000')  # Move cursor down
                     self.lcd.lcdprint(self.line2)
                     self.lcd.lcdcommand('10000000')  # Move cursor to beginning
-                except Exception as e:
+                except Exception as exp:
                     LOGGER.error(
-                        "An exception occurred while writing to LCD: %s", e)
+                        "An exception occurred while writing to LCD: %s", exp)

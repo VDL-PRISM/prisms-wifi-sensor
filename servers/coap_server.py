@@ -10,7 +10,7 @@ import msgpack
 
 LOGGER = logging.getLogger(__name__)
 
-
+# pylint: disable=abstract-method
 class AirQualityResource(Resource):
     def __init__(self, queue, lcd):
         super(AirQualityResource, self).__init__("AirQualityResource")
@@ -54,6 +54,7 @@ class AirQualityResource(Resource):
             LOGGER.exception("An error occurred!")
 
 
+# pylint: disable=unused-argument
 def run(config, hostname, queue, lcd):
     # Start server
     try:
