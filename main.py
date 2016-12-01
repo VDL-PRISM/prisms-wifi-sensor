@@ -56,7 +56,8 @@ class AirQualityResource(Resource):
             data = self.queue.peek(size)
 
             # Make sure data is always a list
-            if isinstance(data, list) and not isinstance(data[0], list):
+            if isinstance(data, list) and len(data) > 0 and \
+               not isinstance(data[0], list):
                 data = [data]
 
             self.payload = msgpack.packb(data)
