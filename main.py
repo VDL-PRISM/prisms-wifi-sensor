@@ -25,12 +25,9 @@ LOGGER = logging.getLogger(__name__)
 # pylint: disable=abstract-method
 class AirQualityResource(Resource):
     def __init__(self, queue, lcd):
-        super(AirQualityResource, self).__init__("AirQualityResource")
+        super().__init__("AirQualityResource")
         self.queue = queue
         self.lcd = lcd
-        self.resource_type = "rt1"
-        self.content_type = "text/plain"
-        self.interface_type = "if1"
 
         self.payload = None
 
@@ -67,12 +64,14 @@ class AirQualityResource(Resource):
             LOGGER.exception("An error occurred!")
 
 
+# pylint: disable=abstract-method
+class DummyResource(Resource):
+    def __init__(self):
+        super().__init__("DummyResource")
+
+
 # Read data from the sensor
 def read_data(config, lcd, queue):
-    LOGGER.info("Getting host name")
-    hostname = socket.gethostname()
-    LOGGER.info("Hostname: %s", hostname)
-
     LOGGER.info("Starting air quality sensor")
     air_sensor = dylos.setup(config['serial']['port'],
                              config['serial']['baudrate'])
@@ -93,12 +92,11 @@ def read_data(config, lcd, queue):
             # Combine data together
             data = {"sampletime": now,
                     "sequence": sequence_number,
-                    "monitorname": hostname,
                     **air_data,
                     **temp_data}
 
             # Transform the data
-            # [humidity, large, monitorname, sampletime, sequence, small,
+            # [humidity, large, sampletime, sequence, small,
             #  temperature]
             data = [[v for k, v in sorted(data.items())]]
 
@@ -136,9 +134,12 @@ def main():
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
 
-    # Set up sensors
     LOGGER.info("Starting LCD screen")
     lcd = LCDWriter()
+
+    LOGGER.info("Getting host name")
+    hostname = socket.gethostname()
+    LOGGER.info("Hostname: %s", hostname)
 
     # Start reading from sensors
     sensor_thread = Thread(target=read_data, args=(config, lcd, queue))
@@ -150,6 +151,7 @@ def main():
         LOGGER.info("Starting server")
         server = CoAPServer(("224.0.1.187", 5683), multicast=True)
         server.add_resource('air_quality/', AirQualityResource(queue, lcd))
+        server.add_resource('name={}'.format(hostname), DummyResource())
         server.listen()
     except KeyboardInterrupt:
         LOGGER.debug("Shutting down server")
