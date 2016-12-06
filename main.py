@@ -2,6 +2,7 @@ from __future__ import print_function, division
 import argparse
 from datetime import datetime
 import logging
+import signal
 import socket
 import struct
 from threading import Thread
@@ -13,8 +14,10 @@ import msgpack
 from persistent_queue import PersistentQueue
 import yaml
 
-from sensors import dylos, sht21
+from sensors import sht21
 from sensors.lcd import LCDWriter
+from sensors.dylos import Dylos
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(threadName)s:%(levelname)s:'
@@ -24,6 +27,7 @@ logging.basicConfig(level=logging.DEBUG,
                             'dylos.log', when='midnight', backupCount=10),
                         logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
+RUNNING = True
 
 
 # pylint: disable=abstract-method
@@ -75,20 +79,13 @@ class DummyResource(Resource):
 
 
 # Read data from the sensor
-def read_data(config, lcd, queue):
-    LOGGER.info("Starting air quality sensor")
-    air_sensor = dylos.setup(config['serial']['port'],
-                             config['serial']['baudrate'])
-
-    LOGGER.info("Starting temperature sensor")
-    temp_sensor = sht21.setup()
-
+def read_data(dylos, temp_sensor, lcd, queue):
     sequence_number = 0
 
-    while True:
+    while RUNNING:
         try:
             LOGGER.info("Getting new data from sensors")
-            air_data = air_sensor()
+            air_data = dylos.read()
             temp_data = temp_sensor()
             now = time.time()
             sequence_number += 1
@@ -121,9 +118,10 @@ def read_data(config, lcd, queue):
             # Hopefully it will fix itself
             LOGGER.exception("An exception occurred!")
 
-            LOGGER.debug("Waiting 15 seconds and then trying again")
-            time.sleep(15)
-            continue
+            if RUNNING:
+                LOGGER.debug("Waiting 15 seconds and then trying again")
+                time.sleep(15)
+                continue
 
 def main():
     parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
@@ -145,22 +143,38 @@ def main():
     hostname = socket.gethostname()
     LOGGER.info("Hostname: %s", hostname)
 
+    LOGGER.info("Starting Dylos sensor")
+    dylos = Dylos(config['serial']['port'],
+                  config['serial']['baudrate'])
+
+    LOGGER.info("Starting temperature sensor")
+    temp_sensor = sht21.setup()
+
     # Start reading from sensors
-    sensor_thread = Thread(target=read_data, args=(config, lcd, queue))
-    sensor_thread.daemon = True
+    sensor_thread = Thread(target=read_data, args=(dylos, temp_sensor, lcd, queue))
     sensor_thread.start()
 
     # Start server
-    try:
-        LOGGER.info("Starting server")
-        server = CoAPServer(("224.0.1.187", 5683), multicast=True)
-        server.add_resource('air_quality/', AirQualityResource(queue, lcd))
-        server.add_resource('name={}'.format(hostname), DummyResource())
-        server.listen()
-    except KeyboardInterrupt:
+    LOGGER.info("Starting server")
+    server = CoAPServer(("224.0.1.187", 5683), multicast=True)
+    server.add_resource('air_quality/', AirQualityResource(queue, lcd))
+    server.add_resource('name={}'.format(hostname), DummyResource())
+
+    def stop_running(sig_num, frame):
+        global RUNNING
+
+        LOGGER.debug("Shutting down sensors")
+        RUNNING = False
+        dylos.stop()
+
         LOGGER.debug("Shutting down server")
         server.close()
 
+    signal.signal(signal.SIGTERM, stop_running)
+    signal.signal(signal.SIGINT, stop_running)
+
+    sensor_thread.join()
+    LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
     main()
