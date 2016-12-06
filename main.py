@@ -18,7 +18,11 @@ from sensors.lcd import LCDWriter
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(threadName)s:%(levelname)s:'
-                           '%(name)s:%(message)s')
+                           '%(name)s:%(message)s',
+                    handlers=[
+                        logging.handlers.TimedRotatingFileHandler(
+                            'dylos.log', when='midnight', backupCount=10),
+                        logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
 
 
