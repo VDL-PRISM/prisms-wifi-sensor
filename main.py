@@ -82,6 +82,10 @@ class DummyResource(Resource):
 def read_data(dylos, temp_sensor, lcd, queue):
     sequence_number = 0
 
+    # Update LCD on boot
+    lcd.queue_size = len(queue)
+    lcd.display_data()
+
     while RUNNING:
         try:
             LOGGER.info("Getting new data from sensors")
