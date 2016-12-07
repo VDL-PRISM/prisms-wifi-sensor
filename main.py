@@ -195,8 +195,17 @@ def main():
     signal.signal(signal.SIGTERM, stop_running)
     signal.signal(signal.SIGINT, stop_running)
 
-    # Block until server.close() is called
-    server.listen()
+    # Keep listening, even if there is an error
+    while True:
+        try:
+            # Block until server.close() is called
+            server.listen()
+        except Exception as e:
+            LOGGER.error("Exception occurred while listening: %s", e)
+            if not RUNNING:
+                LOGGER.debug("Stopping because running is false")
+                break
+
 
     sensor_thread.join()
     LOGGER.debug("Quitting...")
