@@ -195,6 +195,9 @@ def main():
     signal.signal(signal.SIGTERM, stop_running)
     signal.signal(signal.SIGINT, stop_running)
 
+    # Block until server.close() is called
+    server.listen()
+
     sensor_thread.join()
     LOGGER.debug("Quitting...")
 
