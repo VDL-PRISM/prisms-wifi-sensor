@@ -165,6 +165,8 @@ class LCDWriter:
         self.queue_size = 0
         self.update_queue_time = None
 
+        self.address = ""
+
         try:
             self.lcd = LCDDriver()
             self.lcd.setup()
@@ -182,7 +184,9 @@ class LCDWriter:
         line1 = "{: >5} {: >4} {}".format(self.small,
                                           self.large,
                                           update_air_time)
-        line2 = "{: >10} {}".format(self.queue_size, update_queue_time)
+        line2 = "{: >4} {: >5} {}".format(self.address,
+                                          self.queue_size,
+                                          update_queue_time)
 
         self.display(line1=line1, line2=line2)
 

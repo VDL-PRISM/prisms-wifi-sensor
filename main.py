@@ -5,6 +5,7 @@ import logging
 import signal
 import socket
 import struct
+import subprocess
 from threading import Thread
 import time
 
@@ -86,6 +87,13 @@ def read_data(dylos, temp_sensor, lcd, queue):
     lcd.queue_size = len(queue)
     lcd.display_data()
 
+    # Get wireless interface
+    interface = subprocess.check_output('iwconfig 2> /dev/null '
+                                        '| grep -o "^[[:alnum:]]\+"',
+                                        shell=True)
+    interface = interface.strip().decode('utf8')
+    LOGGER.debug("Monitoring wireless interface {}".format(interface))
+
     while RUNNING:
         try:
             LOGGER.info("Getting new data from sensors")
@@ -108,11 +116,21 @@ def read_data(dylos, temp_sensor, lcd, queue):
             # Save data for later
             queue.push(data)
 
+            # Check to see if we have an IP address
+            ip_address = subprocess.check_output('ifconfig {} '
+                                                 '| grep "inet addr"'
+                                                 '| cut -d: -f2 '
+                                                 '| cut -d" " -f1'.format(interface),
+                                                 shell=True)
+            ip_address = ip_address.strip().decode('utf8')
+            LOGGER.info("IP address: %s", ip_address)
+
             # Display results
             lcd.small = air_data['small']
             lcd.large = air_data['large']
             lcd.update_air_time = datetime.now()
             lcd.queue_size = len(queue)
+            lcd.address = ip_address.split('.')[-1]
             lcd.display_data()
 
         except KeyboardInterrupt:
