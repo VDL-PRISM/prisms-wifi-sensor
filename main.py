@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.DEBUG,
                            '%(name)s:%(message)s',
                     handlers=[
                         logging.handlers.TimedRotatingFileHandler(
-                            'dylos.log', when='midnight', backupCount=10),
+                            'dylos.log', when='midnight', backupCount=7),
                         logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
@@ -42,12 +42,12 @@ class AirQualityResource(Resource):
 
     def render_GET(self, request):
         try:
-            LOGGER.debug("Received GET request with payload: %s",
+            LOGGER.info("Received GET request with payload: %s",
                          repr(request.payload))
             ack, size = struct.unpack('!HH', request.payload)
 
             # Delete the amount of data that has been ACK'd
-            LOGGER.debug("Deleting %s items from the queue", ack)
+            LOGGER.info("Deleting %s items from the queue", ack)
             self.queue.delete(ack)
             self.queue.flush()
 
@@ -58,7 +58,7 @@ class AirQualityResource(Resource):
 
             # Get data from queue
             size = min(size, len(self.queue))
-            LOGGER.debug("Getting %s items from the queue", size)
+            LOGGER.info("Getting %s items from the queue", size)
             data = self.queue.peek(size)
 
             # Make sure data is always a list
@@ -66,6 +66,7 @@ class AirQualityResource(Resource):
                not isinstance(data[0], list):
                 data = [data]
 
+            LOGGER.debug("Sending data: %s", data)
             self.payload = msgpack.packb(data)
 
             return self
@@ -97,8 +98,11 @@ def read_data(dylos, temp_sensor, lcd, queue):
     while RUNNING:
         try:
             LOGGER.info("Getting new data from sensors")
+            LOGGER.debug("Reading from dylos sensor")
             air_data = dylos.read()
+            LOGGER.debug("Reading from temperature sensor")
             temp_data = temp_sensor()
+
             now = time.time()
             sequence_number += 1
 
@@ -114,6 +118,7 @@ def read_data(dylos, temp_sensor, lcd, queue):
             data = [[v for k, v in sorted(data.items())]]
 
             # Save data for later
+            LOGGER.debug("Pushing %s into queue", data)
             queue.push(data)
 
             # Check to see if we have an IP address
