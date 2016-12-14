@@ -1,17 +1,7 @@
-This runs different types of servers on a Dylos air quality sensor. To see all options, run
+To run,
 
 ```
-python main.py -h
+python3 main.py
 ```
 
-For example, to run a CoAP server, run
-
-```
-python main.py coap_server
-```
-
-The following types of servers are supported:
-
-- HTTP
-- MQTT (publisher)
-- CoAP
+This starts a CoAP server and starts reading from the dylos sensor.
