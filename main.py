@@ -186,6 +186,7 @@ def main():
     server = CoAPServer(("224.0.1.187", 5683), multicast=True)
     server.add_resource('air_quality/', AirQualityResource(queue, lcd))
     server.add_resource('name={}'.format(hostname), DummyResource())
+    server.add_resource('type=dylos', DummyResource())
 
     def stop_running(sig_num, frame):
         global RUNNING
