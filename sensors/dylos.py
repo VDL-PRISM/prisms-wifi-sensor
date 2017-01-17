@@ -1,8 +1,10 @@
 import logging
 
+import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_BBIO.UART as UART
 import serial
 
+DYLOS_POWER_PIN = "P8_10"
 LOGGER = logging.getLogger(__name__)
 
 class Dylos:
@@ -11,6 +13,10 @@ class Dylos:
 
         # Setup UART
         UART.setup("UART1")
+
+        # Make sure Dylos sensor is turned on
+        GPIO.setup(DYLOS_POWER_PIN, GPIO.OUT)
+        GPIO.output(DYLOS_POWER_PIN, GPIO.LOW)
 
         self.ser = serial.Serial(port=port,
                                  baudrate=baudrate,
