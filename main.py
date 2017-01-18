@@ -5,7 +5,7 @@ import logging
 import signal
 import socket
 import struct
-import subprocess
+from subprocess import check_output, CalledProcessError
 from threading import Thread
 import time
 
@@ -89,11 +89,14 @@ def read_data(dylos, temp_sensor, lcd, queue):
     lcd.display_data()
 
     # Get wireless interface
-    interface = subprocess.check_output('iwconfig 2> /dev/null '
-                                        '| grep -o "^[[:alnum:]]\+"',
-                                        shell=True)
-    interface = interface.strip().decode('utf8')
-    LOGGER.debug("Monitoring wireless interface {}".format(interface))
+    try:
+        interface = check_output('iwconfig 2> /dev/null '
+                                 '| grep -o "^[[:alnum:]]\+"',
+                                 shell=True)
+        interface = interface.strip().decode('utf8')
+        LOGGER.debug("Monitoring wireless interface {}".format(interface))
+    except CalledProcessError:
+        interface = ''
 
     while RUNNING:
         try:
@@ -122,13 +125,16 @@ def read_data(dylos, temp_sensor, lcd, queue):
             queue.push(data)
 
             # Check to see if we have an IP address
-            ip_address = subprocess.check_output('ifconfig {} '
-                                                 '| grep "inet addr"'
-                                                 '| cut -d: -f2 '
-                                                 '| cut -d" " -f1'.format(interface),
-                                                 shell=True)
-            ip_address = ip_address.strip().decode('utf8')
-            LOGGER.info("IP address: %s", ip_address)
+            try:
+                ip_address = check_output('ifconfig {} '
+                                          '| grep "inet addr"'
+                                          '| cut -d: -f2 '
+                                          '| cut -d" " -f1'.format(interface),
+                                          shell=True)
+                ip_address = ip_address.strip().decode('utf8')
+                LOGGER.info("IP address: %s", ip_address)
+            except CalledProcessError:
+                LOGGER.warning("Unable to get IP address")
 
             # Display results
             lcd.small = air_data['small']
