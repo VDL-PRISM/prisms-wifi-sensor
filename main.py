@@ -5,7 +5,7 @@ import logging
 import signal
 import socket
 import struct
-from subprocess import check_output, CalledProcessError
+from subprocess import run, check_output, CalledProcessError
 from threading import Thread
 import time
 
@@ -25,7 +25,8 @@ logging.basicConfig(level=logging.DEBUG,
                            '%(name)s:%(message)s',
                     handlers=[
                         logging.handlers.TimedRotatingFileHandler(
-                            'dylos.log', when='midnight', backupCount=7),
+                            'dylos.log', when='midnight', backupCount=7,
+                            delay=True),
                         logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
@@ -163,6 +164,12 @@ def main():
 
     args = parser.parse_args()
     config = yaml.load(args.config)
+
+    try:
+        run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True)
+        LOGGER.debug("Updated to current time")
+    except CalledProcessError:
+        LOGGER.warning("Unable to update time")
 
     LOGGER.info("Loading persistent queue")
     queue = PersistentQueue('dylos.queue',
