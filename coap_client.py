@@ -31,7 +31,6 @@ class Client(object):
             self.queue.put(message)
 
     def _timeout(self, message):
-        _LOGGER.warning("Timed out trying to send message: %s", message)
         self.queue.put(None)
 
     def stop(self):
@@ -58,7 +57,6 @@ class Client(object):
 
         self.protocol.send_message(request)
         response = self.queue.get(block=True)
-        _LOGGER.debug("%s: Got response to GET request with MID: %s", self.server[0], request.mid)
         return response
 
     def multicast_discover(self): # pragma: no cover
