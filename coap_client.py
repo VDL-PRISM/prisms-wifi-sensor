@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 import logging
-from multiprocessing import Queue
+from queue import Queue, Empty
 from pprint import pprint
 import random
 import struct
@@ -19,163 +19,117 @@ logging.basicConfig(level=logging.INFO)
 class Client(object):
     def __init__(self, server):
         self.server = server
-        self.protocol = CoAP(self.server, random.randint(1, 65535),
-                             self._wait_response)
+        self.protocol = CoAP(self.server,
+                             random.randint(1, 65535),
+                             self._wait_response,
+                             self._timeout)
         self.queue = Queue()
+        self.running = True
 
     def _wait_response(self, message):
         if message.code != defines.Codes.CONTINUE.number:
             self.queue.put(message)
 
-    def stop(self):
-        self.protocol.stopped.set()
+    def _timeout(self, message):
+        _LOGGER.warning("Timed out trying to send message: %s", message)
         self.queue.put(None)
 
-    def _thread_body(self, request, callback):
+    def stop(self):
+        self.running = False
+        # self.protocol.stop()
+        self.queue.put(None)
+
+    def get(self, path, payload=None):  # pragma: no cover
+        request = Request()
+        request.destination = self.server
+        request.code = defines.Codes.GET.number
+        request.uri_path = path
+        request.payload = payload
+
+        # Clear out queue before sending a request. It is possible that an old
+        # response was received between requests. We don't want the requests
+        # and responses to be mismatched. I expect the protocol to take care of
+        # that, but I don't have confidence in the CoAP library.
+        try:
+            while True:
+                self.queue.get_nowait()
+        except Empty:
+            pass
+
         self.protocol.send_message(request)
-        while not self.protocol.stopped.isSet():
-            response = self.queue.get(block=True)
-            callback(response)
+        response = self.queue.get(block=True)
+        _LOGGER.debug("%s: Got response to GET request with MID: %s", self.server[0], request.mid)
+        return response
 
-    def cancel_observing(self, response, send_rst):  # pragma: no cover
-        if send_rst:
-            message = Message()
-            message.destination = self.server
-            message.code = defines.Codes.EMPTY.number
-            message.type = defines.Types["RST"]
-            message.token = response.token
-            message.mid = response.mid
-            self.protocol.send_message(message)
-        self.stop()
-
-    def get(self, path, payload=None, callback=None):  # pragma: no cover
-        request = Request()
-        request.destination = self.server
-        request.code = defines.Codes.GET.number
-        request.uri_path = path
-        request.payload = payload
-
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
-
-    def observe(self, path, callback):  # pragma: no cover
-        request = Request()
-        request.destination = self.server
-        request.code = defines.Codes.GET.number
-        request.uri_path = path
-        request.observe = 0
-
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
-
-    def delete(self, path, callback=None):  # pragma: no cover
-        request = Request()
-        request.destination = self.server
-        request.code = defines.Codes.DELETE.number
-        request.uri_path = path
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
-
-    def post(self, path, payload, callback=None):  # pragma: no cover
-        request = Request()
-        request.destination = self.server
-        request.code = defines.Codes.POST.number
-        request.token = generate_random_token(2)
-        request.uri_path = path
-        request.payload = payload
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
-
-    def put(self, path, payload, callback=None):  # pragma: no cover
-        request = Request()
-        request.destination = self.server
-        request.code = defines.Codes.PUT.number
-        request.uri_path = path
-        request.payload = payload
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
-
-    def discover(self, callback=None):  # pragma: no cover
+    def multicast_discover(self): # pragma: no cover
         request = Request()
         request.destination = self.server
         request.code = defines.Codes.GET.number
         request.uri_path = defines.DISCOVERY_URL
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
 
-    def send_request(self, request, callback=None):  # pragma: no cover
-        if callback is not None:
-            thread = threading.Thread(target=self._thread_body,
-                                      args=(request, callback))
-            thread.start()
-        else:
-            self.protocol.send_message(request)
-            response = self.queue.get(block=True)
-            return response
+        self.protocol.send_message(request)
+        first_response = self.queue.get(block=True)
 
-    def send_empty(self, empty):  # pragma: no cover
-        self.protocol.send_message(empty)
+        if first_response is None:
+            # The message timed out
+            return []
+
+        responses = [first_response]
+        try:
+            # Keep trying to get more responses if they come in
+            while self.running:
+                responses.append(self.queue.get(block=True, timeout=10))
+        except Empty:
+            pass
+
+        return responses
 
 
-def main(path, acks, size):
-    try:
-        host, port, path = parse_uri(path)
-    except Exception:
-        print("Not a valid path: {}".format(path))
-        print("example: coap://127.0.0.1/data")
-        return
+def main(path, acks, size, discover):
 
-    try:
-        client = Client(server=(host, port))
-        response = client.get(path, payload=struct.pack('!HH', acks, size))
-        data = msgpack.unpackb(response.payload, use_list=False)
-        pprint(data)
+    if discover:
+        try:
+            discover_client = Client(server=('224.0.1.187', 5683))
+            responses = discover_client.multicast_discover()
 
-    except KeyboardInterrupt:
-        print("Stopping")
-    finally:
-        client.stop()
+            for response in responses:
+                print(response.source[0], response.payload)
+
+        except KeyboardInterrupt:
+            print("Stopping")
+        finally:
+            discover_client.stop()
+
+    else:
+        try:
+            host, port, path = parse_uri(path)
+        except Exception:
+            print("Not a valid path: {}".format(path))
+            print("example: coap://127.0.0.1/data")
+            return
+
+        try:
+            client = Client(server=(host, port))
+            response = client.get(path, payload=struct.pack('!HH', int(acks), int(size)))
+            data = msgpack.unpackb(response.payload, use_list=False)
+            pprint(data)
+
+        except KeyboardInterrupt:
+            print("Stopping")
+        finally:
+            client.stop()
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 4:
-        print("{} path acks size".format(__file__))
-    else:
-        main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
+    import argparse
+
+    parser = argparse.ArgumentParser(description='CoAP Client')
+    parser.add_argument('path', help='Path of CoAP server (coap://host/end_point)')
+    parser.add_argument('acks', help='Number of data points to acknowledge')
+    parser.add_argument('size', help='Number of data points to get')
+    parser.add_argument('-d', '--discover', action='store_true',
+                        help='Discover CoAP servers (all other arguments are '
+                             'ignored when this is present)')
+    args = parser.parse_args()
+
+    main(args.path, args.acks, args.size, args.discover)
