@@ -165,7 +165,11 @@ def main():
     args = parser.parse_args()
     config = yaml.load(args.config)
 
+    # Start LCD screen
+    lcd = LCDWriter()
+
     try:
+        lcd.display("Updating clock")
         run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True)
         LOGGER.debug("Updated to current time")
     except CalledProcessError:
@@ -176,8 +180,6 @@ def main():
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
 
-    LOGGER.info("Starting LCD screen")
-    lcd = LCDWriter()
 
     LOGGER.info("Getting host name")
     hostname = socket.gethostname()
