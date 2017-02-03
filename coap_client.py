@@ -109,8 +109,12 @@ def main(path, acks, size, discover):
         try:
             client = Client(server=(host, port))
             response = client.get(path, payload=struct.pack('!HH', int(acks), int(size)))
-            data = msgpack.unpackb(response.payload, use_list=False)
-            pprint(data)
+
+            try:
+                data = msgpack.unpackb(response.payload, use_list=False)
+                pprint(data)
+            except:
+                print("Unable to unpack payload:", response.payload)
 
         except KeyboardInterrupt:
             print("Stopping")
