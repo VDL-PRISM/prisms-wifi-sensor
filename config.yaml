@@ -1,3 +1,0 @@
-serial:
-  port: /dev/ttyO1
-  baudrate: 9600

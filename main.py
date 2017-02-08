@@ -1,5 +1,3 @@
-from __future__ import print_function, division
-import argparse
 from datetime import datetime
 import logging
 import signal
@@ -13,7 +11,6 @@ from coapthon.server.coap import CoAP as CoAPServer
 from coapthon.resources.resource import Resource
 import msgpack
 from persistent_queue import PersistentQueue
-import yaml
 
 from sensors import sht21
 from sensors.lcd import LCDWriter
@@ -158,13 +155,6 @@ def read_data(dylos, temp_sensor, lcd, queue):
                 continue
 
 def main():
-    parser = argparse.ArgumentParser(description='Reads data from Dylos sensor')
-    parser.add_argument('-c', '--config', type=argparse.FileType('r'),
-                        default=open('config.yaml'), help='Configuration file')
-
-    args = parser.parse_args()
-    config = yaml.load(args.config)
-
     # Start LCD screen
     lcd = LCDWriter()
 
@@ -186,8 +176,7 @@ def main():
     LOGGER.info("Hostname: %s", hostname)
 
     LOGGER.info("Starting Dylos sensor")
-    dylos = Dylos(config['serial']['port'],
-                  config['serial']['baudrate'])
+    dylos = Dylos()
 
     LOGGER.info("Starting temperature sensor")
     temp_sensor = sht21.setup()
