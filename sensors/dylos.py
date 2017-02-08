@@ -8,7 +8,7 @@ DYLOS_POWER_PIN = "P8_10"
 LOGGER = logging.getLogger(__name__)
 
 class Dylos:
-    def __init__(self, port, baudrate, timeout=5):
+    def __init__(self, port='/dev/ttyO1', baudrate=9600, timeout=5):
         self.running = True
 
         # Setup UART
