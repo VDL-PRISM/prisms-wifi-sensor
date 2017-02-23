@@ -3,7 +3,7 @@ import logging
 import signal
 import socket
 import struct
-from subprocess import run, check_output, CalledProcessError
+from subprocess import run, check_output, CalledProcessError, TimeoutExpired
 from threading import Thread
 import time
 
@@ -160,16 +160,15 @@ def main():
 
     try:
         lcd.display("Updating clock")
-        run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True)
+        run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
         LOGGER.debug("Updated to current time")
-    except CalledProcessError:
+    except (TimeoutExpired, CalledProcessError):
         LOGGER.warning("Unable to update time")
 
     LOGGER.info("Loading persistent queue")
     queue = PersistentQueue('dylos.queue',
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
-
 
     LOGGER.info("Getting host name")
     hostname = socket.gethostname()
