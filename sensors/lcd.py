@@ -181,11 +181,10 @@ class LCDWriter:
         update_queue_time = "" if self.update_queue_time is None else \
                             self.update_queue_time.strftime("%H:%M")
 
-        small = 'no' if self.small == 0 else 'yes'
-        large = 'no' if self.large == 0 else 'yes'
+        valid_data = 'no' if self.small == 0 or self.large == 0 else 'yes'
 
-        line1 = "{: >5} {: >4} {}".format(small,
-                                          large,
+        line1 = "{: >5} {: >4} {}".format('',
+                                          valid_data,
                                           update_air_time)
         line2 = "{: >4} {: >5} {}".format(self.address,
                                           self.queue_size,
