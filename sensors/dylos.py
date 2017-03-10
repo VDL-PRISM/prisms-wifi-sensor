@@ -46,4 +46,5 @@ class Dylos:
 
     def stop(self):
         self.running = False
+        GPIO.cleanup(DYLOS_POWER_PIN)
         self.ser.close()
