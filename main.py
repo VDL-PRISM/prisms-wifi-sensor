@@ -165,6 +165,7 @@ def main():
     except (TimeoutExpired, CalledProcessError):
         LOGGER.warning("Unable to update time")
 
+    lcd.display("Loading queue")
     LOGGER.info("Loading persistent queue")
     queue = PersistentQueue('dylos.queue',
                             dumps=msgpack.packb,
