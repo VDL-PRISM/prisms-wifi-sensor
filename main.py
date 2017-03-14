@@ -158,6 +158,10 @@ def main():
     # Start LCD screen
     lcd = LCDWriter()
 
+    for i in reversed(range(30)):
+        lcd.display("Waiting ({})".format(i))
+        time.sleep(1)
+
     try:
         lcd.display("Updating clock")
         run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
@@ -215,7 +219,6 @@ def main():
             if not RUNNING:
                 LOGGER.debug("Stopping because running is false")
                 break
-
 
     sensor_thread.join()
     LOGGER.debug("Quitting...")
