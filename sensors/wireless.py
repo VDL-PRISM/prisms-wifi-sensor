@@ -1,11 +1,10 @@
-from collections import namedtuple
 import logging
 from subprocess import run, check_output, CalledProcessError, TimeoutExpired
 
 
 
 LOGGER = logging.getLogger(__name__)
-HEADER = ['connected', 'link_quality', 'signal_level', 'noise_level',
+HEADER = ['associated', 'link_quality', 'signal_level', 'noise_level',
           'rx_invalid_nwid', 'rx_invalid_crypt', 'rx_invalid_frag',
           'tx_retires', 'invalid_misc', 'missed_beacon']
 
@@ -42,13 +41,13 @@ class WirelessMonitor:
             result = result.decode('utf8')
 
             if 'Not-Associated' in result:
-                connected = 0
+                associated = 0
             else:
-                connected = 1
+                associated = 1
         except CalledProcessError:
-            connected = 0
+            associated = 0
 
-        return dict(zip(HEADER, [connected] + stats))
+        return dict(zip(HEADER, [associated] + stats))
 
     def ip_address(self):
         if self.interface is None:
