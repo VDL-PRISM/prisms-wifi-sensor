@@ -41,7 +41,6 @@ class PingMonitor:
             end = time.time()
 
             sleep_time = self.interval - (end - start)
-            LOGGER.debug("Sleeping for %s", sleep_time)
             time.sleep(sleep_time)
 
     def _parse(self, result):
