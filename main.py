@@ -15,6 +15,7 @@ from persistent_queue import PersistentQueue
 from sensors import sht21
 from sensors.lcd import LCDWriter
 from sensors.dylos import Dylos
+from sensors.wireless import WirelessMonitor
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -79,22 +80,12 @@ class DummyResource(Resource):
 
 
 # Read data from the sensor
-def read_data(dylos, temp_sensor, lcd, queue):
+def read_data(dylos, temp_sensor, lcd, wifi, queue):
     sequence_number = 0
 
     # Update LCD on boot
     lcd.queue_size = len(queue)
     lcd.display_data()
-
-    # Get wireless interface
-    try:
-        interface = check_output('iwconfig 2> /dev/null '
-                                 '| grep -o "^[[:alnum:]]\+"',
-                                 shell=True)
-        interface = interface.strip().decode('utf8')
-        LOGGER.debug("Monitoring wireless interface {}".format(interface))
-    except CalledProcessError:
-        interface = ''
 
     while RUNNING:
         try:
@@ -103,6 +94,8 @@ def read_data(dylos, temp_sensor, lcd, queue):
             air_data = dylos.read()
             LOGGER.debug("Reading from temperature sensor")
             temp_data = temp_sensor()
+            LOGGER.debug("Reading from wifi sensor")
+            wifi_data = wifi.stats()
 
             now = time.time()
             sequence_number += 1
@@ -111,28 +104,21 @@ def read_data(dylos, temp_sensor, lcd, queue):
             data = {"sampletime": now,
                     "sequence": sequence_number,
                     **air_data,
-                    **temp_data}
+                    **temp_data,
+                    **wifi_data}
 
             # Transform the data
-            # [humidity, large, sampletime, sequence, small,
-            #  temperature]
+            # ['connected', 'humidity', 'invalid_misc', 'large',
+            #  'link_quality', 'noise_level', 'rx_invalid_crypt',
+            #  'rx_invalid_frag', 'rx_invalid_nwid', 'sampletime', 'sequence',
+            #  'signal_level', 'small', 'temperature', 'tx_retires']
             data = [[v for k, v in sorted(data.items())]]
 
             # Save data for later
             LOGGER.debug("Pushing %s into queue", data)
             queue.push(data)
 
-            # Check to see if we have an IP address
-            try:
-                ip_address = check_output('ifconfig {} '
-                                          '| grep "inet addr"'
-                                          '| cut -d: -f2 '
-                                          '| cut -d" " -f1'.format(interface),
-                                          shell=True)
-                ip_address = ip_address.strip().decode('utf8')
-                LOGGER.info("IP address: %s", ip_address)
-            except CalledProcessError:
-                LOGGER.warning("Unable to get IP address")
+            ip_address = wifi.ip_address()
 
             # Display results
             lcd.small = air_data['small']
@@ -185,8 +171,12 @@ def main():
     LOGGER.info("Starting temperature sensor")
     temp_sensor = sht21.setup()
 
+    LOGGER.info("Starting wireless monitor")
+    wifi = WirelessMonitor()
+
     # Start reading from sensors
-    sensor_thread = Thread(target=read_data, args=(dylos, temp_sensor, lcd, queue))
+    sensor_thread = Thread(target=read_data,
+                           args=(dylos, temp_sensor, lcd, wifi, queue))
     sensor_thread.start()
 
     # Start server
@@ -194,7 +184,7 @@ def main():
     server = CoAPServer(("224.0.1.187", 5683), multicast=True)
     server.add_resource('air_quality/', AirQualityResource(queue, lcd))
     server.add_resource('name={}'.format(hostname), DummyResource())
-    server.add_resource('type=dylos', DummyResource())
+    server.add_resource('type=dylos-2', DummyResource())
 
     def stop_running(sig_num, frame):
         global RUNNING
