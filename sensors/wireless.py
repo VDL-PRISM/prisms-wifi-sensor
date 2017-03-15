@@ -42,11 +42,11 @@ class WirelessMonitor:
             result = result.decode('utf8')
 
             if 'Not-Associated' in result:
-                connected = False
+                connected = 0
             else:
-                connected = True
+                connected = 1
         except CalledProcessError:
-            connected = False
+            connected = 0
 
         return dict(zip(HEADER, [connected] + stats))
 
