@@ -16,6 +16,7 @@ from sensors import sht21
 from sensors.lcd import LCDWriter
 from sensors.dylos import Dylos
 from sensors.wireless import WirelessMonitor
+from sensors.ping import PingMonitor
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -80,7 +81,7 @@ class DummyResource(Resource):
 
 
 # Read data from the sensor
-def read_data(dylos, temp_sensor, lcd, wifi, queue):
+def read_data(dylos, temp_sensor, lcd, wifi, ping, queue):
     sequence_number = 0
 
     # Update LCD on boot
@@ -96,6 +97,8 @@ def read_data(dylos, temp_sensor, lcd, wifi, queue):
             temp_data = temp_sensor()
             LOGGER.debug("Reading from wifi sensor")
             wifi_data = wifi.stats()
+            LOGGER.debug("Reading from ping sensor")
+            ping_data = ping.stats()
 
             now = time.time()
             sequence_number += 1
@@ -105,11 +108,13 @@ def read_data(dylos, temp_sensor, lcd, wifi, queue):
                     "sequence": sequence_number,
                     **air_data,
                     **temp_data,
-                    **wifi_data}
+                    **wifi_data,
+                    **ping_data}
 
             # Transform the data
             # ['connected', 'humidity', 'invalid_misc', 'large',
-            #  'link_quality', 'noise_level', 'rx_invalid_crypt',
+            #  'link_quality', 'noise_level', 'ping_errors', 'ping_latency',
+            #  'ping_packet_loss', 'ping_total', 'rx_invalid_crypt',
             #  'rx_invalid_frag', 'rx_invalid_nwid', 'sampletime', 'sequence',
             #  'signal_level', 'small', 'temperature', 'tx_retires']
             data = [[v for k, v in sorted(data.items())]]
@@ -174,9 +179,12 @@ def main():
     LOGGER.info("Starting wireless monitor")
     wifi = WirelessMonitor()
 
+    LOGGER.info("Starting ping monitor")
+    ping = PingMonitor('gateway.local', 5)
+
     # Start reading from sensors
     sensor_thread = Thread(target=read_data,
-                           args=(dylos, temp_sensor, lcd, wifi, queue))
+                           args=(dylos, temp_sensor, lcd, wifi, ping, queue))
     sensor_thread.start()
 
     # Start server
@@ -192,6 +200,7 @@ def main():
         LOGGER.debug("Shutting down sensors")
         RUNNING = False
         dylos.stop()
+        ping.stop()
 
         LOGGER.debug("Shutting down server")
         server.close()
