@@ -108,12 +108,11 @@ def read_data(dylos, temp_sensor, lcd, wifi, queue):
                     **wifi_data}
 
             # Transform the data
-            # [humidity, large, sampletime, sequence, small,
-            #  temperature]
+            # ['connected', 'humidity', 'invalid_misc', 'large',
+            #  'link_quality', 'noise_level', 'rx_invalid_crypt',
+            #  'rx_invalid_frag', 'rx_invalid_nwid', 'sampletime', 'sequence',
+            # 'signal_level', 'small', 'temperature', 'tx_retires']
             data = [[v for k, v in sorted(data.items())]]
-
-            print(data)
-            continue
 
             # Save data for later
             LOGGER.debug("Pushing %s into queue", data)
