@@ -18,7 +18,7 @@ class WirelessMonitor:
                                           shell=True)
             self.interface = self.interface.strip().decode('utf8')
             LOGGER.debug("Monitoring wireless interface {}".format(self.interface))
-        except CalledProcessError:
+        except Exception:
             LOGGER.warning("No wireless interface to monitor!")
             self.interface = None
 
@@ -26,13 +26,17 @@ class WirelessMonitor:
         if self.interface is None:
             return dict(zip(HEADER, [False, -256, -256, 0, 0, 0, 0, 0]))
 
-        # Get stats
-        with open('/proc/net/wireless') as f:
-            lines = [line for line in f if line.strip().startswith(self.interface)]
-        stats = lines[0].split()
-        stats = stats[2:-1]
-        stats[0] = float(stats[0])
-        stats = [int(x) for x in stats]
+        try:
+            # Get stats
+            with open('/proc/net/wireless') as f:
+                lines = [line for line in f if line.strip().startswith(self.interface)]
+            stats = lines[0].split()
+            stats = stats[2:-1]
+            stats[0] = float(stats[0])
+            stats = [int(x) for x in stats]
+        except Exception:
+            LOGGER.exception("Exception occurred while getting wireless stats")
+            stats = [False, -256, -256, 0, 0, 0, 0, 0]
 
         # Determine if connected
         try:
@@ -44,7 +48,8 @@ class WirelessMonitor:
                 associated = 0
             else:
                 associated = 1
-        except CalledProcessError:
+        except Exception:
+            LOGGER.exception("Exception occurred while running iwconfig")
             associated = 0
 
         return dict(zip(HEADER, [associated] + stats))
@@ -62,6 +67,6 @@ class WirelessMonitor:
             ip = ip.strip().decode('utf8')
             LOGGER.info("IP address: %s", ip)
             return ip
-        except CalledProcessError:
+        except Exception:
             LOGGER.warning("Unable to get IP address")
             return ''

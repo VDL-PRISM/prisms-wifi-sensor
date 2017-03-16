@@ -29,14 +29,18 @@ class PingMonitor:
         while self.running:
             # Run a ping
             start = time.time()
-            result = run('ping -c 1 -w 5 {}'.format(self.destination),
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         timeout=10)
 
-            with self.lock:
-                self._parse(result)
+            try:
+                result = run('ping -c 1 -w 5 {}'.format(self.destination),
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             shell=True,
+                             timeout=10)
+                with self.lock:
+                    self._parse(result)
+
+            except Exception:
+                LOGGER.exception("Exception occurred while pinging")
 
             end = time.time()
 
