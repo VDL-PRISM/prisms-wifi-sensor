@@ -86,6 +86,7 @@ def read_data(dylos, temp_sensor, lcd, wifi, ping, queue):
 
     # Update LCD on boot
     lcd.queue_size = len(queue)
+    lcd.address = wifi.ip_address().split('.')[-1]
     lcd.display_data()
 
     while RUNNING:
