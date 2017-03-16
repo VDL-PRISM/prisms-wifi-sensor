@@ -206,6 +206,8 @@ def main():
         LOGGER.debug("Shutting down server")
         server.close()
 
+        lcd.display("Bye!")
+
     signal.signal(signal.SIGTERM, stop_running)
     signal.signal(signal.SIGINT, stop_running)
 
