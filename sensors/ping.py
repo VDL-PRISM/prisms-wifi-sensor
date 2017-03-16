@@ -57,8 +57,10 @@ class PingMonitor:
 
     def stats(self):
         with self.lock:
+            latency = sum(self.latency) / len(self.latency) if len(self.latency) > 0 else 0
+
             data = {'ping_errors': self.errors,
-                    'ping_latency': sum(self.latency) / len(self.latency),
+                    'ping_latency': latency,
                     'ping_packet_loss': self.loss,
                     'ping_total': self.total}
 
