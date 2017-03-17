@@ -1,6 +1,6 @@
 [Unit]
 Description=Sensor
-After=network.target
+After=network.target wifi-reset.service
 
 [Service]
 Type=simple
