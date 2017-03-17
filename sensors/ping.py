@@ -31,6 +31,7 @@ class PingMonitor:
             start = time.time()
 
             try:
+                LOGGER.info("Pinging...")
                 result = run('ping -c 1 -w 5 {}'.format(self.destination),
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
@@ -43,18 +44,25 @@ class PingMonitor:
                 LOGGER.exception("Exception occurred while pinging")
 
             end = time.time()
-
             sleep_time = self.interval - (end - start)
-            time.sleep(sleep_time)
+
+            if sleep_time > 0:
+                LOGGER.debug("Sleeping for %s", sleep_time)
+                time.sleep(sleep_time)
+            else:
+                LOGGER.warning("Sleep time is negative (%s). Ignoring...",
+                               sleep_time)
 
     def _parse(self, result):
         if result.returncode == 0:
+            LOGGER.debug("Ping result: %s", result.stdout.decode('utf8'))
             result = pingparse.parse(result.stdout.decode('utf8'))
             self.latency.append(float(result['avgping']))
 
             if int(result['packet_loss']) != 0:
                 self.loss += 1
         else:
+            LOGGER.warning("Ping error: %s", result.stderr.decode('utf8'))
             self.errors += 1
 
         self.total += 1
