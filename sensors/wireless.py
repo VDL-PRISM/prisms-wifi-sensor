@@ -52,7 +52,7 @@ class WirelessMonitor:
             # Get bit rate
             m = re.search("Bit Rate=(\\d+) Mb/s", result)
             if m is not None:
-                data_rate = m.group(1)
+                data_rate = int(m.group(1))
             else:
                 data_rate = 0
 
