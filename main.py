@@ -81,7 +81,7 @@ class DummyResource(Resource):
 
 
 # Read data from the sensor
-def read_data(dylos, temp_sensor, lcd, wifi, ping, queue):
+def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
     sequence_number = 0
 
     # Update LCD on boot
@@ -98,8 +98,10 @@ def read_data(dylos, temp_sensor, lcd, wifi, ping, queue):
             temp_data = temp_sensor()
             LOGGER.debug("Reading from wifi sensor")
             wifi_data = wifi.stats()
-            LOGGER.debug("Reading from ping sensor")
-            ping_data = ping.stats()
+            LOGGER.debug("Reading from local ping sensor")
+            local_ping_data = local_ping.stats()
+            LOGGER.debug("Reading from remote ping sensor")
+            remote_ping_data = remote_ping.stats()
 
             now = time.time()
             sequence_number += 1
@@ -110,14 +112,18 @@ def read_data(dylos, temp_sensor, lcd, wifi, ping, queue):
                     **air_data,
                     **temp_data,
                     **wifi_data,
-                    **ping_data}
+                    **local_ping_data,
+                    **remote_ping_data}
 
             # Transform the data
-            # ['connected', 'humidity', 'invalid_misc', 'large',
-            #  'link_quality', 'noise_level', 'ping_errors', 'ping_latency',
-            #  'ping_packet_loss', 'ping_total', 'rx_invalid_crypt',
-            #  'rx_invalid_frag', 'rx_invalid_nwid', 'sampletime', 'sequence',
-            #  'signal_level', 'small', 'temperature', 'tx_retires']
+            # ['associated', 'data_rate', 'humidity', 'invalid_misc', 'large',
+            #  'link_quality', 'local_ping_errors', 'local_ping_latency',
+            #  'local_ping_packet_loss', 'local_ping_total', 'noise_level',
+            #  'remote_ping_errors', 'remote_ping_latency',
+            #  'remote_ping_packet_loss', 'remote_ping_total',
+            #  'rx_invalid_crypt', 'rx_invalid_frag', 'rx_invalid_nwid',
+            #  'sampletime', 'sequence', 'signal_level', 'small',
+            #  'temperature', 'tx_retires']
             data = [[v for k, v in sorted(data.items())]]
 
             # Save data for later
@@ -180,12 +186,19 @@ def main():
     LOGGER.info("Starting wireless monitor")
     wifi = WirelessMonitor()
 
-    LOGGER.info("Starting ping monitor")
-    ping = PingMonitor('gateway.local', 5)
+    LOGGER.info("Starting local ping monitor")
+    local_ping = PingMonitor('gateway.local',
+                             interval=5,
+                             prefix='local_')
+
+    LOGGER.info("Starting remote ping monitor")
+    remote_ping = PingMonitor('p1db-prisms-p1.bmi.utah.edu',
+                              interval=15,
+                              prefix='remote_')
 
     # Start reading from sensors
     sensor_thread = Thread(target=read_data,
-                           args=(dylos, temp_sensor, lcd, wifi, ping, queue))
+                           args=(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue))
     sensor_thread.start()
 
     # Start server
@@ -201,7 +214,8 @@ def main():
         LOGGER.debug("Shutting down sensors")
         RUNNING = False
         dylos.stop()
-        ping.stop()
+        local_ping.stop()
+        remote_ping.stop()
 
         LOGGER.debug("Shutting down server")
         server.close()

@@ -10,9 +10,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PingMonitor:
-    def __init__(self, destination, interval=10):
-        self.interval = interval
+    def __init__(self, destination, interval=10, prefix=''):
         self.destination = destination
+        self.interval = interval
+        self.prefix = prefix
 
         self.errors = 0
         self.loss = 0
@@ -71,10 +72,10 @@ class PingMonitor:
         with self.lock:
             latency = sum(self.latency) / len(self.latency) if len(self.latency) > 0 else 0
 
-            data = {'ping_errors': self.errors,
-                    'ping_latency': latency,
-                    'ping_packet_loss': self.loss,
-                    'ping_total': self.total}
+            data = {self.prefix + 'ping_errors': self.errors,
+                    self.prefix + 'ping_latency': latency,
+                    self.prefix + 'ping_packet_loss': self.loss,
+                    self.prefix + 'ping_total': self.total}
 
             self.errors = 0
             self.loss = 0
