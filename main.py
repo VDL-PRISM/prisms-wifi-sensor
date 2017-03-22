@@ -116,11 +116,14 @@ def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
                     **remote_ping_data}
 
             # Transform the data
-            # ['connected', 'humidity', 'invalid_misc', 'large',
-            #  'link_quality', 'noise_level', 'ping_errors', 'ping_latency',
-            #  'ping_packet_loss', 'ping_total', 'rx_invalid_crypt',
-            #  'rx_invalid_frag', 'rx_invalid_nwid', 'sampletime', 'sequence',
-            #  'signal_level', 'small', 'temperature', 'tx_retires']
+            # ['associated', 'humidity', 'invalid_misc', 'large',
+            #  'link_quality', 'local_ping_errors', 'local_ping_latency',
+            #  'local_ping_packet_loss', 'local_ping_total', 'noise_level',
+            #  'remote_ping_errors', 'remote_ping_latency',
+            #  'remote_ping_packet_loss', 'remote_ping_total',
+            #  'rx_invalid_crypt', 'rx_invalid_frag', 'rx_invalid_nwid',
+            #  'sampletime', 'sequence', 'signal_level', 'small',
+            #  'temperature', 'tx_retires']
             data = [[v for k, v in sorted(data.items())]]
 
             # Save data for later
@@ -211,7 +214,8 @@ def main():
         LOGGER.debug("Shutting down sensors")
         RUNNING = False
         dylos.stop()
-        ping.stop()
+        local_ping.stop()
+        remote_ping.stop()
 
         LOGGER.debug("Shutting down server")
         server.close()
