@@ -1,12 +1,12 @@
 import logging
 from subprocess import run, check_output, CalledProcessError, TimeoutExpired
-
+import re
 
 
 LOGGER = logging.getLogger(__name__)
-HEADER = ['associated', 'link_quality', 'signal_level', 'noise_level',
-          'rx_invalid_nwid', 'rx_invalid_crypt', 'rx_invalid_frag',
-          'tx_retires', 'invalid_misc', 'missed_beacon']
+HEADER = ['associated', 'data_rate', 'link_quality', 'signal_level',
+          'noise_level', 'rx_invalid_nwid', 'rx_invalid_crypt',
+          'rx_invalid_frag', 'tx_retires', 'invalid_misc', 'missed_beacon']
 
 
 class WirelessMonitor:
@@ -38,21 +38,30 @@ class WirelessMonitor:
             LOGGER.exception("Exception occurred while getting wireless stats")
             stats = [False, -256, -256, 0, 0, 0, 0, 0]
 
-        # Determine if connected
         try:
             result = check_output('iwconfig {}'.format(self.interface),
                                   shell=True)
             result = result.decode('utf8')
 
+            # Determine if connected
             if 'Not-Associated' in result:
                 associated = 0
             else:
                 associated = 1
+
+            # Get bit rate
+            m = re.search("Bit Rate=(\\d+) Mb/s", result)
+            if m is not None:
+                data_rate = m.group(1)
+            else:
+                data_rate = 0
+
         except Exception:
             LOGGER.exception("Exception occurred while running iwconfig")
             associated = 0
+            data_rate = 0
 
-        return dict(zip(HEADER, [associated] + stats))
+        return dict(zip(HEADER, [associated, data_rate] + stats))
 
     def ip_address(self):
         if self.interface is None:
