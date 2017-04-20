@@ -157,7 +157,29 @@ def main(display_aq=False):
     # Start LCD screen
     lcd = LCDWriter(display_aq)
 
-    for i in reversed(range(30)):
+    # Turn off WiFi
+    lcd.display("Turning off WiFi")
+    try:
+        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done"
+            shell=True)
+    except Exception:
+        LOGGER.exception("Exception while turning off WiFi")
+
+    # Wait for 15 seconds
+    for i in reversed(range(15)):
+        lcd.display("Waiting ({})".format(i))
+        time.sleep(1)
+
+    # Turn on WiFi
+    lcd.display("Turning on WiFi")
+    try:
+        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
+            shell=True)
+    except Exception:
+        LOGGER.exception("Exception while turning on WiFi")
+
+    # Wait for 5 seconds
+    for i in reversed(range(5)):
         lcd.display("Waiting ({})".format(i))
         time.sleep(1)
 
