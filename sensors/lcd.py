@@ -152,7 +152,9 @@ class LCDDriver:
 
 # pylint: disable=too-many-instance-attributes
 class LCDWriter:
-    def __init__(self):
+    def __init__(self, display_aq=False):
+        self.display_aq = display_aq
+
         self.lock = threading.Lock()
 
         self.line1 = ""
@@ -181,10 +183,16 @@ class LCDWriter:
         update_queue_time = "" if self.update_queue_time is None else \
                             self.update_queue_time.strftime("%H:%M")
 
-        valid_data = 'not ok' if self.small == 0 or self.large == 0 else 'ok'
+        if self.display_aq:
+            part_1 = self.small
+            part_2 = self.large
+        else:
+            valid_data = 'not ok' if self.small == 0 or self.large == 0 else 'ok'
+            part_1 = ''
+            part_2 = valid_data
 
-        line1 = "{: >5} {: >4} {}".format('',
-                                          valid_data,
+        line1 = "{: >5} {: >4} {}".format(part_1,
+                                          part_2,
                                           update_air_time)
         line2 = "{: >4} {: >5} {}".format(self.address,
                                           self.queue_size,

@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 import logging
 import signal
@@ -152,9 +153,9 @@ def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
                 time.sleep(15)
                 continue
 
-def main():
+def main(display_aq=False):
     # Start LCD screen
-    lcd = LCDWriter()
+    lcd = LCDWriter(display_aq)
 
     for i in reversed(range(30)):
         lcd.display("Waiting ({})".format(i))
@@ -240,4 +241,9 @@ def main():
     LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Dylos sensor')
+    parser.add_argument('--display_aq', action='store_true',
+                        help='Display air quality readings on LCD')
+    args = parser.parse_args()
+
+    main(display_aq=args.display_aq)
