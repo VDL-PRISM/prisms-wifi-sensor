@@ -56,7 +56,6 @@ class PingMonitor:
 
     def _parse(self, result):
         if result.returncode == 0:
-            LOGGER.debug("Ping result: %s", result.stdout.decode('utf8'))
             result = pingparse.parse(result.stdout.decode('utf8'))
             self.latency.append(float(result['avgping']))
 
