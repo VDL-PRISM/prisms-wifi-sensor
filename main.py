@@ -160,7 +160,7 @@ def main(display_aq=False):
     # Turn off WiFi
     lcd.display("Turning off WiFi")
     try:
-        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done"
+        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
             shell=True)
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
