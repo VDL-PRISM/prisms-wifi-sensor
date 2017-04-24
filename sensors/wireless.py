@@ -99,13 +99,17 @@ class WirelessMonitor:
         self.connecting.set()
 
         try:
+            LOGGER.info("Turning off wireless interface")
             run("ifdown {}".format(self.interface), shell=True)
+            LOGGER.info("Done turning off wireless interface")
         except Exception:
             LOGGER.exception("Exception while turning off WiFi")
         time.sleep(10)
 
         try:
+            LOGGER.info("Turning on wireless interface")
             run("ifup {}".format(self.interface), shell=True)
+            LOGGER.info("Done turning on wireless interface")
         except Exception:
             LOGGER.exception("Exception while turning on WiFi")
 
