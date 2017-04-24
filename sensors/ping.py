@@ -41,6 +41,8 @@ class PingMonitor:
                 with self.lock:
                     self._parse(result)
 
+            except TimeoutExpired:
+                LOGGER.error("Ping command timed out")
             except Exception:
                 LOGGER.exception("Exception occurred while pinging")
 
