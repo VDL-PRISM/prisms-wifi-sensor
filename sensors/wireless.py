@@ -104,6 +104,8 @@ class WirelessMonitor:
             LOGGER.info("Done turning off wireless interface")
         except Exception:
             LOGGER.exception("Exception while turning off WiFi")
+
+        LOGGER.info("Waiting before starting wireless interface")
         time.sleep(10)
 
         try:
