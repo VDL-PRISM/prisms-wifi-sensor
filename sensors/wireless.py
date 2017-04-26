@@ -1,6 +1,8 @@
 import logging
 from subprocess import run, check_output, CalledProcessError, TimeoutExpired
 import re
+import threading
+import time
 
 
 LOGGER = logging.getLogger(__name__)
@@ -11,6 +13,8 @@ HEADER = ['associated', 'data_rate', 'link_quality', 'signal_level',
 
 class WirelessMonitor:
     def __init__(self):
+        self.connecting = threading.Event()
+
         # Figure out what the wireless interface is
         try:
             self.interface = check_output('iwconfig 2> /dev/null '
@@ -56,6 +60,17 @@ class WirelessMonitor:
             else:
                 data_rate = 0
 
+            # If not associated, start thread to try to connect
+            if not associated:
+                LOGGER.warning("Not associated! Trying to reconnect")
+
+                if not self.connecting.is_set():
+                    LOGGER.info("Starting thread to connect")
+                    t = threading.Thread(target=self.connect)
+                    t.start()
+                else:
+                    LOGGER.info("A thread is already trying to connect to WiFi")
+
         except Exception:
             LOGGER.exception("Exception occurred while running iwconfig")
             associated = 0
@@ -79,3 +94,26 @@ class WirelessMonitor:
         except Exception:
             LOGGER.warning("Unable to get IP address")
             return ''
+
+    def connect(self):
+        self.connecting.set()
+
+        try:
+            LOGGER.info("Turning off wireless interface")
+            run("ifdown {}".format(self.interface), shell=True)
+            LOGGER.info("Done turning off wireless interface")
+        except Exception:
+            LOGGER.exception("Exception while turning off WiFi")
+
+        LOGGER.info("Waiting before starting wireless interface")
+        time.sleep(10)
+
+        try:
+            LOGGER.info("Turning on wireless interface")
+            run("ifup {}".format(self.interface), shell=True)
+            LOGGER.info("Done turning on wireless interface")
+        except Exception:
+            LOGGER.exception("Exception while turning on WiFi")
+
+        self.connecting.clear()
+
