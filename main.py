@@ -114,14 +114,13 @@ def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
                     **temp_data,
                     **wifi_data,
                     **local_ping_data,
-                    **remote_ping_data,
-                    'queue_length': len(queue)}
+                    **remote_ping_data}
 
             # Transform the data
             # ['associated', 'data_rate', 'humidity', 'invalid_misc', 'large',
             #  'link_quality', 'local_ping_errors', 'local_ping_latency',
             #  'local_ping_packet_loss', 'local_ping_total', 'noise_level',
-            #  'queue_length', 'remote_ping_errors', 'remote_ping_latency',
+            #  'remote_ping_errors', 'remote_ping_latency',
             #  'remote_ping_packet_loss', 'remote_ping_total',
             #  'rx_invalid_crypt', 'rx_invalid_frag', 'rx_invalid_nwid',
             #  'sampletime', 'sequence', 'signal_level', 'small',
