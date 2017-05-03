@@ -60,16 +60,16 @@ class WirelessMonitor:
             else:
                 data_rate = 0
 
-            # If not associated, start thread to try to connect
-            if not associated:
-                LOGGER.warning("Not associated! Trying to reconnect")
+            # # If not associated, start thread to try to connect
+            # if not associated:
+            #     LOGGER.warning("Not associated! Trying to reconnect")
 
-                if not self.connecting.is_set():
-                    LOGGER.info("Starting thread to connect")
-                    t = threading.Thread(target=self.connect)
-                    t.start()
-                else:
-                    LOGGER.info("A thread is already trying to connect to WiFi")
+            #     if not self.connecting.is_set():
+            #         LOGGER.info("Starting thread to connect")
+            #         t = threading.Thread(target=self.connect)
+            #         t.start()
+            #     else:
+            #         LOGGER.info("A thread is already trying to connect to WiFi")
 
         except Exception:
             LOGGER.exception("Exception occurred while running iwconfig")
