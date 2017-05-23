@@ -142,6 +142,15 @@ def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
             lcd.address = ip_address.split('.')[-1]
             lcd.display_data()
 
+            # Every 10 minutes, update time
+            if sequence_number % 10 == 0:
+                try:
+                    LOGGER.debug("Trying to update clock")
+                    run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
+                    LOGGER.debug("Updated to current time")
+                except (TimeoutExpired, CalledProcessError):
+                    LOGGER.warning("Unable to update time")
+
         except KeyboardInterrupt:
             break
         except Exception:
