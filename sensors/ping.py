@@ -9,8 +9,13 @@ import utils.pingparse as pingparse
 LOGGER = logging.getLogger(__name__)
 
 
+def setup_sensor():
+    return PingMonitor('localhost')
+
 class PingMonitor:
     def __init__(self, destination, interval=10, prefix=''):
+        self.type = 'input'
+
         self.destination = destination
         self.interval = interval
         self.prefix = prefix
