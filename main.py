@@ -13,6 +13,7 @@ from coapthon.server.coap import CoAP as CoAPServer
 from coapthon.resources.resource import Resource
 import msgpack
 from persistent_queue import PersistentQueue
+import yaml
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -29,10 +30,10 @@ RUNNING = True
 
 # pylint: disable=abstract-method
 class DataResource(Resource):
-    def __init__(self, queue, lcd):
+    def __init__(self, queue, input_sensors):
         super().__init__("DataResource")
         self.queue = queue
-        self.lcd = lcd
+        self.sensors = input_sensors
 
         self.payload = None
 
@@ -47,10 +48,8 @@ class DataResource(Resource):
             self.queue.delete(ack)
             self.queue.flush()
 
-            LOGGER.debug("Updating LCD")
-            self.lcd.queue_size = len(self.queue)
-            self.lcd.update_queue_time = datetime.now()
-            self.lcd.display_data()
+            for sensor in sensors:
+                sensor.transmitted_data()
 
             # Get data from queue
             size = min(size, len(self.queue))
@@ -101,8 +100,6 @@ def read_data(output_sensors, input_sensors, queue):
             for sensor in input_sensors:
                 sensor.data(data)
 
-            ip_address = wifi.ip_address()
-
             # Every 10 minutes, update time
             if sequence_number % 10 == 0:
                 try:
@@ -111,6 +108,11 @@ def read_data(output_sensors, input_sensors, queue):
                     LOGGER.debug("Updated to current time")
                 except (TimeoutExpired, CalledProcessError):
                     LOGGER.warning("Unable to update time")
+
+            for _ in range(60):
+                if not RUNNING:
+                    break
+                time.sleep(1)
 
         except KeyboardInterrupt:
             break
@@ -124,6 +126,8 @@ def read_data(output_sensors, input_sensors, queue):
                 time.sleep(15)
                 continue
 
+    LOGGER.debug("Exiting read loop")
+
 
 def load_sensors():
     import importlib
@@ -132,13 +136,13 @@ def load_sensors():
     input_sensors = []
     output_sensors = []
 
-    for sensor in sensors:
+    for sensor, config in sensors:
         LOGGER.info("Loading %s", sensor)
         module = importlib.import_module(sensor)
 
         # Make sure module has proper method
         if not hasattr(module, 'setup_sensor'):
-            print("Sensor must have setup_sensor function. Skipping...")
+            LOGGER.error("Sensor must have setup_sensor function. Skipping...")
             continue
 
         if hasattr(module, 'REQUIREMENTS'):
@@ -149,7 +153,7 @@ def load_sensors():
                                   'dependency %s', sensor, req)
 
         LOGGER.info("Setting up %s", sensor)
-        sensor = module.setup_sensor()
+        sensor = module.setup_sensor(config)
 
         if sensor.type == 'input':
             input_sensors.append(sensor)
@@ -161,16 +165,19 @@ def load_sensors():
     return input_sensors, output_sensors
 
 
-
 def load_sensor_files():
-    for f in os.listdir('sensors'):
-        if f == '__pycache__' or f == '.DS_Store':
-            continue
-        elif os.path.isdir(os.path.join('sensors', f)):
-            yield 'sensors.{}'.format(f)
-        else:
-            # For files we will strip out .py extension
-            yield 'sensors.{}'.format(f[0:-3])
+    with open('configuration.yaml') as f:
+        config = yaml.load(f)
+
+    for component, component_configs in config.items():
+        # TODO: Make sure component_configs is a list
+
+        for component_config in component_configs:
+            if not os.path.exists(os.path.join('sensors', component)) and \
+               not os.path.exists(os.path.join('sensors', component) + '.py'):
+                LOGGER.error("Can not find %s", component)
+            else:
+                yield 'sensors.{}'.format(component), component_config
 
 
 def install_package(package):
@@ -188,7 +195,7 @@ def install_package(package):
         return False
 
 
-def main(display_aq=False):
+def main():
     input_sensors, output_sensors = load_sensors()
 
     def status(message):
@@ -216,12 +223,12 @@ def main(display_aq=False):
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
+    Wait for 15 seconds
     for i in reversed(range(15)):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-    # Turn on WiFi
+    Turn on WiFi
     status("Turning on WiFi")
     try:
         run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
@@ -229,7 +236,7 @@ def main(display_aq=False):
     except Exception:
         LOGGER.exception("Exception while turning on WiFi")
 
-    # Wait for 5 seconds
+    Wait for 5 seconds
     for i in reversed(range(5)):
         status("Waiting ({})".format(i))
         time.sleep(1)
@@ -259,42 +266,30 @@ def main(display_aq=False):
     # Start server
     LOGGER.info("Starting server")
     server = CoAPServer(("224.0.1.187", 5683), multicast=True)
-    server.add_resource('data/', DataResource(queue, lcd))
+    server.add_resource('data/', DataResource(queue, input_sensors))
 
-    # def stop_running(sig_num, frame):
-    #     global RUNNING
-
-    #     LOGGER.debug("Shutting down sensors")
-    #     RUNNING = False
-
-    #     for sensor in output_sensors + input_sensors:
-    #         LOGGER.debug("Stopping %s", sensor.name)
-    #         sensor.stop()
-
-    #     LOGGER.debug("Shutting down server")
-    #     server.close()
-
-    # signal.signal(signal.SIGTERM, stop_running)
-    # signal.signal(signal.SIGINT, stop_running)
-
-    # Keep listening, even if there is an error
     while True:
         try:
-            # Block until server.close() is called
             server.listen()
+        except KeyboardInterrupt:
+            global RUNNING
+
+            RUNNING = False
+            LOGGER.debug("Shutting down server")
+            server.close()
+
+            for sensor in output_sensors + input_sensors:
+                LOGGER.debug("Stopping %s", sensor.name)
+                sensor.stop()
+
+            break
         except Exception as e:
             LOGGER.error("Exception occurred while listening: %s", e)
-            if not RUNNING:
-                LOGGER.debug("Stopping because running is false")
-                break
 
+
+    LOGGER.debug("Waiting for sensor thread")
     sensor_thread.join()
     LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Dylos sensor')
-    parser.add_argument('--display_aq', action='store_true',
-                        help='Display air quality readings on LCD')
-    args = parser.parse_args()
-
-    main(display_aq=args.display_aq)
+    main()
