@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 import threading
@@ -12,6 +13,10 @@ LOGGER = logging.getLogger(__name__)
 # To properly clock LCD I had to use exotic microsecond range sleep function
 def usleep(sleep_time):
     time.sleep(sleep_time / 100000.0)  # Can go higher, but will eat up whole CPU on that.
+
+
+def setup_sensor(config):
+    return LCDWriter(display_aq=config['display_air_quality'])
 
 
 class LCDDriver:
@@ -169,6 +174,8 @@ class LCDWriter:
 
         self.address = ""
 
+
+    def start(self):
         try:
             self.lcd = LCDDriver()
             self.lcd.setup()
@@ -176,6 +183,22 @@ class LCDWriter:
             LOGGER.error("Error occurred while setting up LCD screen: %s ", exp)
             LOGGER.error("Probably means it is not connected.")
             self.lcd = None
+
+    def stop(self):
+        pass
+
+    def status(self, message):
+        self.display(line1=message)
+
+    def data(self, data):
+        self.small = data['small']
+        self.large = data['large']
+        self.update_air_time = datetime.now()
+        self.queue_size = data['queue_length']
+
+    def transmitted_data(self):
+        self.update_queue_time = datetime.now()
+        self.display_data()
 
     def display_data(self):
         update_air_time = "" if self.update_air_time is None else \

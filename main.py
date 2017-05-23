@@ -198,6 +198,9 @@ def install_package(package):
 def main():
     input_sensors, output_sensors = load_sensors()
 
+    for sensor in input_sensors:
+        sensor.start()
+
     def status(message):
         for sensor in input_sensors:
             sensor.status(message)

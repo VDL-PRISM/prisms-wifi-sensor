@@ -7,3 +7,6 @@ ping:
     host: p1db-prisms-p1.bmi.utah.edu
     interval: 15
     prefix: remote_
+
+lcd:
+  display_air_quality: yes
