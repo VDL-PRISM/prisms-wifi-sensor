@@ -100,7 +100,7 @@ def read_data(output_sensors, input_sensors, queue):
                 data.update(sensor.read())
 
             # Save data for later
-            LOGGER.debug("Pushing %s into queue", data)
+            LOGGER.debug("Pushing {} into queue".format(data))
             queue.push(data)
 
             # Write data to input sensors
