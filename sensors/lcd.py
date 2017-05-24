@@ -193,9 +193,9 @@ class LCDWriter:
         self.display(line1=message)
 
     def data(self, data):
-        self.small = data['small']
-        self.large = data['large']
         self.update_air_time = datetime.now()
+        self.small = data.get('small', 0)
+        self.large = data.get('large', 0)
         self.queue_size = data['queue_length']
 
     def transmitted_data(self):
