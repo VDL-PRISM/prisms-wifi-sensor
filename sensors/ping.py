@@ -106,3 +106,4 @@ class PingMonitor:
 
     def stop(self):
         self.running = False
+        self.sensor_thread.join()
