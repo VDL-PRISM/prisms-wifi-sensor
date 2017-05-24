@@ -93,7 +93,7 @@ def read_data(output_sensors, input_sensors, queue):
             sequence_number += 1
             data = {"sampletime": now,
                     "sequence": sequence_number,
-                    "queue_length": len(queue)}
+                    "queue_length": len(queue) + 1}
 
             LOGGER.info("Getting new data from sensors")
             for sensor in output_sensors:
