@@ -47,7 +47,6 @@ class PingMonitor:
             start = time.time()
 
             try:
-                LOGGER.info("Pinging...")
                 result = run('ping -c 1 -w 5 {}'.format(self.destination),
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
