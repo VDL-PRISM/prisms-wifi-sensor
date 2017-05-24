@@ -56,14 +56,11 @@ class DataResource(Resource):
                 sensor.transmitted_data(len(self.queue))
 
             # Get data from queue
-            size = min(size, len(self.queue))
-            LOGGER.info("Getting %s items from the queue", size)
+            LOGGER.info("Trying to get %s items from the queue", size)
             data = self.queue.peek(size)
-
-            # Make sure data is always a list
-            if isinstance(data, list) and len(data) > 0 and \
-               not isinstance(data[0], list):
+            if not isinstance(data, list):
                 data = [data]
+            LOGGER.info("Got %s items from the queue", len(data))
 
             LOGGER.debug("Sending data: %s", data)
             self.payload = msgpack.packb(data)
