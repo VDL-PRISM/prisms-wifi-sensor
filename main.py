@@ -226,12 +226,12 @@ def main():
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
-    Wait for 15 seconds
+    # Wait for 15 seconds
     for i in reversed(range(15)):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-    Turn on WiFi
+    # Turn on WiFi
     status("Turning on WiFi")
     try:
         run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
@@ -239,7 +239,7 @@ def main():
     except Exception:
         LOGGER.exception("Exception while turning on WiFi")
 
-    Wait for 5 seconds
+    # Wait for 5 seconds
     for i in reversed(range(5)):
         status("Waiting ({})".format(i))
         time.sleep(1)
