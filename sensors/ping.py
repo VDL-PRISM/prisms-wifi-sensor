@@ -65,7 +65,7 @@ class PingMonitor:
             sleep_time = self.interval - (end - start)
 
             if sleep_time > 0:
-                LOGGER.debug("Sleeping for %s", sleep_time)
+                # LOGGER.debug("Sleeping for %s", sleep_time)
                 self._sleep(sleep_time)
             else:
                 LOGGER.warning("Sleep time is negative (%s). Ignoring...",
