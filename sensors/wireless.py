@@ -10,11 +10,18 @@ HEADER = ['associated', 'data_rate', 'link_quality', 'signal_level',
           'noise_level', 'rx_invalid_nwid', 'rx_invalid_crypt',
           'rx_invalid_frag', 'tx_retires', 'invalid_misc', 'missed_beacon']
 
+def setup_sensor(config):
+    return WirelessMonitor()
+
 
 class WirelessMonitor:
     def __init__(self):
+        self.type = 'output'
+        self.name = 'wireless'
+
         self.connecting = threading.Event()
 
+    def start(self):
         # Figure out what the wireless interface is
         try:
             self.interface = check_output('iwconfig 2> /dev/null '
@@ -26,7 +33,7 @@ class WirelessMonitor:
             LOGGER.warning("No wireless interface to monitor!")
             self.interface = None
 
-    def stats(self):
+    def read(self):
         if self.interface is None:
             return dict(zip(HEADER, [False, -256, -256, 0, 0, 0, 0, 0]))
 
