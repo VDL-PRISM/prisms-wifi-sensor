@@ -170,7 +170,9 @@ def load_sensor_files():
         config = yaml.load(f)
 
     for component, component_configs in config.items():
-        # TODO: Make sure component_configs is a list
+        # Make sure component_configs is a list
+        if isinstance(component_configs, dict):
+            component_configs = [component_configs]
 
         for component_config in component_configs:
             if not os.path.exists(os.path.join('sensors', component)) and \
