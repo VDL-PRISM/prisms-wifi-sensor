@@ -28,7 +28,11 @@ LOGGER = logging.getLogger(__name__)
 RUNNING = True
 
 
-# pylint: disable=abstract-method
+class DummyResource(Resource):
+    def __init__(self):
+        super().__init__("DummyResource")
+
+
 class DataResource(Resource):
     def __init__(self, queue, input_sensors):
         super().__init__("DataResource")
@@ -73,10 +77,6 @@ class DataResource(Resource):
 def read_data(output_sensors, input_sensors, queue):
     sequence_number = 0
 
-    LOGGER.info("Getting host name")
-    hostname = socket.gethostname()
-    LOGGER.info("Hostname: %s", hostname)
-
     for sensor in input_sensors:
         sensor.status("Starting sensors")
 
@@ -88,8 +88,7 @@ def read_data(output_sensors, input_sensors, queue):
         try:
             now = time.time()
             sequence_number += 1
-            data = {"name": hostname,
-                    "sampletime": now,
+            data = {"sampletime": now,
                     "sequence": sequence_number,
                     "queue_length": len(queue)}
 
@@ -270,6 +269,10 @@ def main():
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
 
+    LOGGER.info("Getting host name")
+    hostname = socket.gethostname()
+    LOGGER.info("Hostname: %s", hostname)
+
     # Start reading from sensors
     sensor_thread = Thread(target=read_data,
                            args=(output_sensors, input_sensors, queue))
@@ -279,6 +282,7 @@ def main():
     LOGGER.info("Starting server")
     server = CoAPServer(("224.0.1.187", 5683), multicast=True)
     server.add_resource('data/', DataResource(queue, input_sensors))
+    server.add_resource('name={}'.format(hostname), DummyResource())
 
     while True:
         try:
