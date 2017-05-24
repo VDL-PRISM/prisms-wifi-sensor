@@ -158,6 +158,8 @@ class LCDDriver:
 # pylint: disable=too-many-instance-attributes
 class LCDWriter:
     def __init__(self, display_aq=False):
+        self.type = 'input'
+        self.name = 'lcd'
         self.display_aq = display_aq
 
         self.lock = threading.Lock()
