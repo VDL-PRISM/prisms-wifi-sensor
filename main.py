@@ -176,7 +176,9 @@ def load_sensor_files():
 
     for component, component_configs in config.items():
         # Make sure component_configs is a list
-        if isinstance(component_configs, dict):
+        if component_configs is None:
+            component_configs = [None]
+        elif isinstance(component_configs, dict):
             component_configs = [component_configs]
 
         for component_config in component_configs:
