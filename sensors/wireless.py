@@ -8,7 +8,8 @@ import time
 LOGGER = logging.getLogger(__name__)
 HEADER = ['associated', 'data_rate', 'link_quality', 'signal_level',
           'noise_level', 'rx_invalid_nwid', 'rx_invalid_crypt',
-          'rx_invalid_frag', 'tx_retires', 'invalid_misc', 'missed_beacon']
+          'rx_invalid_frag', 'tx_retires', 'invalid_misc', 'missed_beacon',
+          'ip_address']
 
 def setup_sensor(config):
     return WirelessMonitor()
@@ -34,8 +35,10 @@ class WirelessMonitor:
             self.interface = None
 
     def read(self):
+        ip_addr = self.ip_address()
+
         if self.interface is None:
-            return dict(zip(HEADER, [False, -256, -256, 0, 0, 0, 0, 0]))
+            return dict(zip(HEADER, [False, -256, -256, 0, 0, 0, 0, 0, ip_addr]))
 
         try:
             # Get stats
@@ -83,7 +86,7 @@ class WirelessMonitor:
             associated = 0
             data_rate = 0
 
-        return dict(zip(HEADER, [associated, data_rate] + stats))
+        return dict(zip(HEADER, [associated, data_rate] + stats + [ip_addr]))
 
     def ip_address(self):
         if self.interface is None:

@@ -88,7 +88,6 @@ def read_data(output_sensors, input_sensors, queue):
                     "sequence": sequence_number,
                     "queue_length": len(queue)}
 
-            # TODO: Get IP address
             # TODO: Include device type
 
             LOGGER.info("Getting new data from sensors")

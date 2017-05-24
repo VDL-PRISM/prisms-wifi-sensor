@@ -194,9 +194,12 @@ class LCDWriter:
 
     def data(self, data):
         self.update_air_time = datetime.now()
+        self.queue_size = data['queue_length']
+
         self.small = data.get('small', 0)
         self.large = data.get('large', 0)
-        self.queue_size = data['queue_length']
+        self.address = data.get('ip_address', '').split('.')[-1]
+
         self.display_data()
 
     def transmitted_data(self):

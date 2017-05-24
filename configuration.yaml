@@ -10,3 +10,5 @@ ping:
 
 lcd:
   display_air_quality: yes
+
+wireless:
