@@ -6,10 +6,6 @@ import time
 
 
 LOGGER = logging.getLogger(__name__)
-HEADER = ['associated', 'data_rate', 'link_quality', 'signal_level',
-          'noise_level', 'rx_invalid_nwid', 'rx_invalid_crypt',
-          'rx_invalid_frag', 'tx_retires', 'invalid_misc', 'missed_beacon',
-          'ip_address']
 
 def setup_sensor(config):
     return WirelessMonitor()
@@ -34,11 +30,16 @@ class WirelessMonitor:
             LOGGER.warning("No wireless interface to monitor!")
             self.interface = None
 
+    def stop(self):
+        pass
+
     def read(self):
-        ip_addr = self.ip_address()
+        data = {}
 
         if self.interface is None:
-            return dict(zip(HEADER, [False, -256, -256, 0, 0, 0, 0, 0, ip_addr]))
+            return data
+
+        data['ip_address'] = self.ip_address()
 
         try:
             # Get stats
@@ -48,30 +49,35 @@ class WirelessMonitor:
             stats = stats[2:-1]
             stats[0] = float(stats[0])
             stats = [int(x) for x in stats]
+
+            data.update({'link_quality': stats[0],
+                         'signal_level': stats[1],
+                         'noise_level': stats[2],
+                         'rx_invalid_nwid': stats[3],
+                         'rx_invalid_crypt': stats[4],
+                         'rx_invalid_frag': stats[5],
+                         'tx_retires': stats[6],
+                         'invalid_misc': stats[7],
+                         'missed_beacon': stats[8]})
         except Exception:
             LOGGER.exception("Exception occurred while getting wireless stats")
-            stats = [False, -256, -256, 0, 0, 0, 0, 0]
 
         try:
             result = check_output('iwconfig {}'.format(self.interface),
-                                  shell=True)
+                                  shell=True,
+                                  timeout=5)
             result = result.decode('utf8')
 
             # Determine if connected
-            if 'Not-Associated' in result:
-                associated = 0
-            else:
-                associated = 1
+            data['associated'] = int('Not-Associated' not in result)
 
             # Get bit rate
             m = re.search("Bit Rate=(\\d+) Mb/s", result)
             if m is not None:
-                data_rate = int(m.group(1))
-            else:
-                data_rate = 0
+                data['data_rate'] = int(m.group(1))
 
             # If not associated, start thread to try to connect
-            if not associated:
+            if not data['associated']:
                 LOGGER.warning("Not associated! Trying to reconnect")
 
                 if not self.connecting.is_set():
@@ -83,10 +89,8 @@ class WirelessMonitor:
 
         except Exception:
             LOGGER.exception("Exception occurred while running iwconfig")
-            associated = 0
-            data_rate = 0
 
-        return dict(zip(HEADER, [associated, data_rate] + stats + [ip_addr]))
+        return data
 
     def ip_address(self):
         if self.interface is None:
@@ -97,7 +101,8 @@ class WirelessMonitor:
                               '| grep "inet addr"'
                               '| cut -d: -f2 '
                               '| cut -d" " -f1'.format(self.interface),
-                              shell=True)
+                              shell=True,
+                              timeout=5)
             ip = ip.strip().decode('utf8')
             LOGGER.info("IP address: %s", ip)
             return ip

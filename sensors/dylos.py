@@ -21,6 +21,8 @@ class Dylos:
 
         self.running = True
         self.lock = Lock()
+        self.small = 0
+        self.large = 0
 
         # Setup UART
         UART.setup("UART1")
@@ -74,6 +76,9 @@ class Dylos:
 
     def read(self):
         with self.lock:
+            if self.small == 0 and self.large == 0:
+                # Don't return data if it is not valid
+                return {}
             return {"small": self.small, "large": self.large}
 
     def stop(self):
