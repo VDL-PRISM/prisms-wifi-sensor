@@ -22,7 +22,8 @@ logging.basicConfig(level=logging.DEBUG,
                     handlers=[
                         logging.handlers.TimedRotatingFileHandler(
                             'dylos.log', when='midnight', backupCount=7,
-                            delay=True),
+                            delay=True,
+                            encoding="utf8"),
                         logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
@@ -100,7 +101,7 @@ def read_data(output_sensors, input_sensors, queue):
                 data.update(sensor.read())
 
             # Save data for later
-            LOGGER.debug("Pushing {} into queue".format(data))
+            LOGGER.debug("Pushing %s into queue", data)
             queue.push(data)
 
             # Write data to input sensors
