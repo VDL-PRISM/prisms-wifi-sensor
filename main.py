@@ -73,6 +73,9 @@ class DataResource(Resource):
 def read_data(output_sensors, input_sensors, queue):
     sequence_number = 0
 
+    for sensor in input_sensors:
+        sensor.status("Starting sensors")
+
     LOGGER.info("Starting sensors")
     for sensor in output_sensors:
         sensor.start()
