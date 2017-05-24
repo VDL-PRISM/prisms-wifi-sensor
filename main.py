@@ -73,6 +73,10 @@ class DataResource(Resource):
 def read_data(output_sensors, input_sensors, queue):
     sequence_number = 0
 
+    LOGGER.info("Getting host name")
+    hostname = socket.gethostname()
+    LOGGER.info("Hostname: %s", hostname)
+
     for sensor in input_sensors:
         sensor.status("Starting sensors")
 
@@ -84,11 +88,10 @@ def read_data(output_sensors, input_sensors, queue):
         try:
             now = time.time()
             sequence_number += 1
-            data = {"sampletime": now,
+            data = {"name": hostname,
+                    "sampletime": now,
                     "sequence": sequence_number,
                     "queue_length": len(queue)}
-
-            # TODO: Include device type
 
             LOGGER.info("Getting new data from sensors")
             for sensor in output_sensors:
@@ -260,10 +263,6 @@ def main():
     queue = PersistentQueue('dylos.queue',
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
-
-    LOGGER.info("Getting host name")
-    hostname = socket.gethostname()
-    LOGGER.info("Hostname: %s", hostname)
 
     # Start reading from sensors
     sensor_thread = Thread(target=read_data,
