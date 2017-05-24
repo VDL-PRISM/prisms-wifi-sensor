@@ -46,7 +46,7 @@ class WirelessMonitor:
             with open('/proc/net/wireless') as f:
                 lines = [line for line in f if line.strip().startswith(self.interface)]
             stats = lines[0].split()
-            stats = stats[2:-1]
+            stats = stats[2:11]
             stats[0] = float(stats[0])
             stats = [int(x) for x in stats]
 

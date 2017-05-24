@@ -42,7 +42,7 @@ class Dylos:
         self.thread.start()
 
     def _run(self):
-        last_data = time.time()
+        retries = 0
 
         # Keep reading from serial port until we get some data
         while self.running:
