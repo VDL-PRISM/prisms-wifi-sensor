@@ -39,7 +39,7 @@ class WirelessMonitor:
         if self.interface is None:
             return data
 
-        data['ip_address'] = self.ip_address()
+        data['ip_address'] = (self.ip_address(), 'ip_address')
 
         try:
             # Get stats
@@ -50,15 +50,15 @@ class WirelessMonitor:
             stats[0] = float(stats[0])
             stats = [int(x) for x in stats]
 
-            data.update({'link_quality': stats[0],
-                         'signal_level': stats[1],
-                         'noise_level': stats[2],
-                         'rx_invalid_nwid': stats[3],
-                         'rx_invalid_crypt': stats[4],
-                         'rx_invalid_frag': stats[5],
-                         'tx_retires': stats[6],
-                         'invalid_misc': stats[7],
-                         'missed_beacon': stats[8]})
+            data.update({'link_quality': (stats[0], 'num'),
+                         'signal_level': (stats[1], 'dBm'),
+                         'noise_level': (stats[2], 'dBm'),
+                         'rx_invalid_nwid': (stats[3], 'num'),
+                         'rx_invalid_crypt': (stats[4], 'num'),
+                         'rx_invalid_frag': (stats[5], 'num'),
+                         'tx_retires': (stats[6], 'num'),
+                         'invalid_misc': (stats[7], 'num'),
+                         'missed_beacon': (stats[8], 'num')})
         except Exception:
             LOGGER.exception("Exception occurred while getting wireless stats")
 
@@ -69,15 +69,15 @@ class WirelessMonitor:
             result = result.decode('utf8')
 
             # Determine if connected
-            data['associated'] = int('Not-Associated' not in result)
+            data['associated'] = (int('Not-Associated' not in result), 'associated')
 
             # Get bit rate
             m = re.search("Bit Rate=(\\d+) Mb/s", result)
             if m is not None:
-                data['data_rate'] = int(m.group(1))
+                data['data_rate'] = (int(m.group(1)), 'Mbps')
 
             # If not associated, start thread to try to connect
-            if not data['associated']:
+            if not data['associated'][0]:
                 LOGGER.warning("Not associated! Trying to reconnect")
 
                 if not self.connecting.is_set():

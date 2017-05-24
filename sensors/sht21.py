@@ -36,7 +36,7 @@ class Sht21:
         except Exception:
             humidity = None
 
-        return {'temperature': temp, 'humidity': humidity}
+        return {'temperature': (temp, '°C'), 'humidity': (humidity, '%')}
 
     def stop(self):
         pass

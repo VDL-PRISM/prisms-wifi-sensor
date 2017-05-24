@@ -79,7 +79,7 @@ class Dylos:
             if self.small == 0 and self.large == 0:
                 # Don't return data if it is not valid
                 return {}
-            return {"small": self.small, "large": self.large}
+            return {"small": (self.small, 'pm'), "large": (self.large, 'pm')}
 
     def stop(self):
         self.running = False
