@@ -83,6 +83,12 @@ def read_data(output_sensors, input_sensors, queue):
 
     while RUNNING:
         try:
+            # Sleep
+            for _ in range(60):
+                if not RUNNING:
+                    break
+                time.sleep(1)
+
             now = time.time()
             sequence_number += 1
             data = {"sampletime": now,
@@ -109,11 +115,6 @@ def read_data(output_sensors, input_sensors, queue):
                     LOGGER.debug("Updated to current time")
                 except (TimeoutExpired, CalledProcessError):
                     LOGGER.warning("Unable to update time")
-
-            for _ in range(60):
-                if not RUNNING:
-                    break
-                time.sleep(1)
 
         except KeyboardInterrupt:
             break
