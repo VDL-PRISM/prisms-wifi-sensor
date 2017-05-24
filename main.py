@@ -52,7 +52,7 @@ class DataResource(Resource):
             self.queue.delete(ack)
             self.queue.flush()
 
-            for sensor in sensors:
+            for sensor in self.sensors:
                 sensor.transmitted_data()
 
             # Get data from queue
