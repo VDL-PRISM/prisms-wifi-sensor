@@ -53,7 +53,7 @@ class DataResource(Resource):
             self.queue.flush()
 
             for sensor in self.sensors:
-                sensor.transmitted_data()
+                sensor.transmitted_data(len(self.queue))
 
             # Get data from queue
             size = min(size, len(self.queue))

@@ -202,8 +202,9 @@ class LCDWriter:
 
         self.display_data()
 
-    def transmitted_data(self):
+    def transmitted_data(self, queue_length):
         self.update_queue_time = datetime.now()
+        self.queue_size = queue_length
         self.display_data()
 
     def display_data(self):
