@@ -160,6 +160,10 @@ def load_sensors():
         LOGGER.info("Setting up %s", sensor)
         sensor = module.setup_sensor(config)
 
+        if sensor is None:
+            LOGGER.error("\"setup_sensor\" returned None, skipping...")
+            continue
+
         if sensor.type == 'input':
             input_sensors.append(sensor)
         elif sensor.type == 'output':

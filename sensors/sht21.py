@@ -4,7 +4,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def setup_sensor(config):
-    pass
+    return Sht21()
 
 
 class Sht21:
