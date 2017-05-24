@@ -12,3 +12,7 @@ lcd:
   display_air_quality: yes
 
 wireless:
+
+dylos:
+
+sht21:
