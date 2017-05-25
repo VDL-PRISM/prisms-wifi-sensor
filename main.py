@@ -172,8 +172,8 @@ def load_sensors():
     return input_sensors, output_sensors
 
 
-def load_sensor_files():
-    with open('configuration.yaml') as f:
+def load_sensor_files(config_file):
+    with open(config_file) as f:
         config = yaml.load(f)
 
     for component, component_configs in config.items():
@@ -206,8 +206,8 @@ def install_package(package):
         return False
 
 
-def main():
-    input_sensors, output_sensors = load_sensors()
+def main(config_file):
+    input_sensors, output_sensors = load_sensors(config_file)
 
     for sensor in input_sensors:
         sensor.start()
@@ -307,4 +307,9 @@ def main():
     LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Generalized WiFi sensor')
+    parser.add_argument('-c', '--config', default='configuration.yaml',
+                        help='Configuration file. The default is the ' \
+                             'configuration.yaml in the current directory.')
+    args = parser.parse_args()
+    main(args.config)
