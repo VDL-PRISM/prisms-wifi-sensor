@@ -10,15 +10,14 @@ REQUIREMENTS = ['https://github.com/adafruit/Adafruit_Python_DHT/archive/master.
 
 
 def setup_sensor(config):
-    import Adafruit_DHT
-    import Adafruit_BBIO.ADC as ADC
-    import Adafruit_BBIO.UART as UART
-    import serial
-
     return AirStation()
 
 
 class AirStation:
+    import Adafruit_DHT
+    import Adafruit_BBIO.UART as UART
+    import serial
+
     def __init__(self):
         self.type = 'output'
         self.name = 'airu'
