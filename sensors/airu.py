@@ -14,11 +14,11 @@ def setup_sensor(config):
 
 
 class AirStation:
-    import Adafruit_DHT
-    import Adafruit_BBIO.UART as UART
-    import serial
-
     def __init__(self):
+        import Adafruit_DHT
+        import Adafruit_BBIO.UART as UART
+        import serial
+
         self.type = 'output'
         self.name = 'airu'
 
