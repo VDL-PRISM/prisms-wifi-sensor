@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG,
                            '%(name)s:%(message)s',
                     handlers=[
                         logging.handlers.TimedRotatingFileHandler(
-                            'dylos.log', when='midnight', backupCount=7,
+                            'sensor.log', when='midnight', backupCount=7,
                             delay=True,
                             encoding="utf8"),
                         logging.StreamHandler()])
@@ -264,7 +264,7 @@ def main():
 
     status("Loading queue")
     LOGGER.info("Loading persistent queue")
-    queue = PersistentQueue('dylos.queue',
+    queue = PersistentQueue('sensor.queue',
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
 
