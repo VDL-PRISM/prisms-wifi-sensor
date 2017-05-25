@@ -132,9 +132,9 @@ def read_data(output_sensors, input_sensors, queue):
     LOGGER.debug("Exiting read loop")
 
 
-def load_sensors():
+def load_sensors(config_file):
     import importlib
-    sensors = load_sensor_files()
+    sensors = load_sensor_files(config_file)
 
     input_sensors = []
     output_sensors = []
