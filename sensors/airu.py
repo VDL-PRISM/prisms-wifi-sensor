@@ -91,6 +91,9 @@ class AirStation:
         # Return the TSI standard readings
         return (pm1, pm25, pm10)
 
+    def start(self):
+        pass
+
     def read(self):
         humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, DHT22_PIN)
         pm1, pm25, pm10 = self.get_pm()
