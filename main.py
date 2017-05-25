@@ -227,51 +227,51 @@ def main(config_file):
         for sensor in input_sensors:
             sensor.status(message)
 
-    # Turn off WiFi
-    status("Turning off WiFi")
-    try:
-        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-            shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning off WiFi")
+    # # Turn off WiFi
+    # status("Turning off WiFi")
+    # try:
+    #     subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
+    #         shell=True)
+    # except Exception:
+    #     LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
-    for i in reversed(range(15)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
+    # # Wait for 15 seconds
+    # for i in reversed(range(15)):
+    #     status("Waiting ({})".format(i))
+    #     time.sleep(1)
 
-    # Turn off WiFi
-    status("Turning off WiFi")
-    try:
-        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-            shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning off WiFi")
+    # # Turn off WiFi
+    # status("Turning off WiFi")
+    # try:
+    #     subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
+    #         shell=True)
+    # except Exception:
+    #     LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
-    for i in reversed(range(15)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
+    # # Wait for 15 seconds
+    # for i in reversed(range(15)):
+    #     status("Waiting ({})".format(i))
+    #     time.sleep(1)
 
-    # Turn on WiFi
-    status("Turning on WiFi")
-    try:
-        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
-            shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning on WiFi")
+    # # Turn on WiFi
+    # status("Turning on WiFi")
+    # try:
+    #     subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
+    #         shell=True)
+    # except Exception:
+    #     LOGGER.exception("Exception while turning on WiFi")
 
-    # Wait for 5 seconds
-    for i in reversed(range(5)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
+    # # Wait for 5 seconds
+    # for i in reversed(range(5)):
+    #     status("Waiting ({})".format(i))
+    #     time.sleep(1)
 
-    try:
-        status("Updating clock")
-        subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
-        LOGGER.debug("Updated to current time")
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-        LOGGER.warning("Unable to update time")
+    # try:
+    #     status("Updating clock")
+    #     subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
+    #     LOGGER.debug("Updated to current time")
+    # except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+    #     LOGGER.warning("Unable to update time")
 
     status("Loading queue")
     LOGGER.info("Loading persistent queue")
