@@ -15,7 +15,6 @@ def setup_sensor(config):
 
 class AirStation:
     def __init__(self):
-        import Adafruit_DHT
         import Adafruit_BBIO.UART as UART
         import serial
 
@@ -95,6 +94,8 @@ class AirStation:
         pass
 
     def read(self):
+        import Adafruit_DHT
+
         humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, DHT22_PIN)
         pm1, pm25, pm10 = self.get_pm()
 
