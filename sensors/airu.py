@@ -107,7 +107,6 @@ class AirStation:
 
 
         LOGGER.debug("Data from AirU: %s", data)
-        data = {k: v for k, v in data.items() if v != None}
         return data
 
     def stop(self):
