@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import json
 import logging
 from queue import Queue, Empty
 from pprint import pprint
@@ -11,7 +12,6 @@ from coapthon import defines
 from coapthon.client.coap import CoAP
 from coapthon.messages.request import Request
 from coapthon.utils import generate_random_token, parse_uri
-import msgpack
 
 logging.basicConfig(level=logging.INFO)
 
@@ -111,10 +111,11 @@ def main(path, acks, size, discover):
             response = client.get(path, payload=struct.pack('!HH', int(acks), int(size)))
 
             try:
-                data = msgpack.unpackb(response.payload, use_list=False)
+                data = json.loads(response.payload.decode())
                 pprint(data)
-            except:
+            except Exception as e:
                 print("Unable to unpack payload:", response.payload)
+                print(e)
 
         except KeyboardInterrupt:
             print("Stopping")
