@@ -63,6 +63,11 @@ class DataResource(Resource):
             # Get data from queue
             LOGGER.info("Trying to get %s items from the queue", size)
             data = self.queue.peek(size)
+
+            if data is None:
+                self.payload = b'[]'
+                return self
+
             if not isinstance(data, list):
                 data = [data]
             LOGGER.info("Got %s items from the queue", len(data))
