@@ -71,7 +71,7 @@ class DataResource(Resource):
             data = [{key.decode(): (value.decode() if isinstance(value, bytes) else value,
                                     unit.decode()) for key, (value, unit) in d.items()} for d in data]
             LOGGER.debug("Sending data: %s", data)
-            self.payload = json.dumps(data)
+            self.payload = json.dumps(data).encode()
 
             return self
         except Exception:
