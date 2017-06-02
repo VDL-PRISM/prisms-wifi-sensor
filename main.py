@@ -66,7 +66,7 @@ class DataResource(Resource):
             data = self.queue.peek(size)
 
             if data is None:
-                self.payload = b'[]'
+                self.payload = b''
                 return self
 
             if not isinstance(data, list):
