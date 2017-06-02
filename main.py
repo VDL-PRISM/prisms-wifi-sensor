@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime
+import gzip
 import json
 import logging
 import os
@@ -76,7 +77,7 @@ class DataResource(Resource):
             data = [{key.decode(): (value.decode() if isinstance(value, bytes) else value,
                                     unit.decode()) for key, (value, unit) in d.items()} for d in data]
             LOGGER.debug("Sending data: %s", data)
-            self.payload = json.dumps(data).encode()
+            self.payload = gzip.compress(json.dumps(data).encode())
 
             return self
         except Exception:
