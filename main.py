@@ -67,6 +67,9 @@ class DataResource(Resource):
                 data = [data]
             LOGGER.info("Got %s items from the queue", len(data))
 
+            # Convert all byte strings to strings
+            data = [{key.decode(): (value.decode() if isinstance(value, bytes) else value,
+                                    unit.decode()) for key, (value, unit) in d.items()} for d in data]
             LOGGER.debug("Sending data: %s", data)
             self.payload = json.dumps(data)
 
