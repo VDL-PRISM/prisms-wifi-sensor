@@ -1,18 +1,22 @@
 import argparse
 from datetime import datetime
+import json
 import logging
 import os
 import signal
 import socket
 import struct
-from subprocess import run, check_output, CalledProcessError, TimeoutExpired
+import sys
+import subprocess
 from threading import Thread
 import time
+from urllib.parse import urlparse
 
 from coapthon.server.coap import CoAP as CoAPServer
 from coapthon.resources.resource import Resource
 import msgpack
 from persistent_queue import PersistentQueue
+import pkg_resources
 import yaml
 
 
@@ -64,7 +68,7 @@ class DataResource(Resource):
             LOGGER.info("Got %s items from the queue", len(data))
 
             LOGGER.debug("Sending data: %s", data)
-            self.payload = msgpack.packb(data)
+            self.payload = json.dumps(data)
 
             return self
         except Exception:
@@ -112,9 +116,9 @@ def read_data(output_sensors, input_sensors, queue):
             if sequence_number % 10 == 0:
                 try:
                     LOGGER.debug("Trying to update clock")
-                    run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
+                    subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
                     LOGGER.debug("Updated to current time")
-                except (TimeoutExpired, CalledProcessError):
+                except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
                     LOGGER.warning("Unable to update time")
 
         except KeyboardInterrupt:
@@ -148,12 +152,11 @@ def load_sensors(config_file):
             LOGGER.error("Sensor must have setup_sensor function. Skipping...")
             continue
 
-        if hasattr(module, 'REQUIREMENTS'):
-            for req in module.REQUIREMENTS:
-                LOGGER.debug("Installing package for %s: %s", sensor, req)
-                if not install_package(req):
-                    LOGGER.error('Not initializing %s because could not install '
-                                  'dependency %s', sensor, req)
+        for req in getattr(module, 'REQUIREMENTS', []):
+            if not install_package(req):
+                LOGGER.error('Not initializing %s because could not install '
+                              'dependency %s', sensor, req)
+                continue
 
         LOGGER.info("Setting up %s", sensor)
         sensor = module.setup_sensor(config)
@@ -190,19 +193,28 @@ def load_sensor_files(config_file):
             else:
                 yield 'sensors.{}'.format(component), component_config
 
+def check_package_exists(package):
+    try:
+        req = pkg_resources.Requirement.parse(package)
+    except ValueError:
+        # This is a zip file
+        req = pkg_resources.Requirement.parse(urlparse(package).fragment)
+
+    return any(dist in req for dist in pkg_resources.working_set)
+
 
 def install_package(package):
+    if check_package_exists(package):
+        return True
+
     LOGGER.info('Attempting install of %s', package)
     args = [sys.executable, '-m', 'pip', 'install', package, '--upgrade']
+    LOGGER.debug(' '.join(args))
 
     try:
-        LOGGER.info('-' * 80)
-        result = subprocess.call(args) == 0
-        LOGGER.info('-' * 80)
-        return result
+        return subprocess.call(args) == 0
     except subprocess.SubprocessError:
-        LOGGER.exception('Unable to install pacakge %s', package)
-        LOGGER.info('-' * 80)
+        LOGGER.exception('Unable to install package %s', package)
         return False
 
 
@@ -216,51 +228,51 @@ def main(config_file):
         for sensor in input_sensors:
             sensor.status(message)
 
-    # Turn off WiFi
-    status("Turning off WiFi")
-    try:
-        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-            shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning off WiFi")
+    # # Turn off WiFi
+    # status("Turning off WiFi")
+    # try:
+    #     subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
+    #         shell=True)
+    # except Exception:
+    #     LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
-    for i in reversed(range(15)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
+    # # Wait for 15 seconds
+    # for i in reversed(range(15)):
+    #     status("Waiting ({})".format(i))
+    #     time.sleep(1)
 
-    # Turn off WiFi
-    status("Turning off WiFi")
-    try:
-        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-            shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning off WiFi")
+    # # Turn off WiFi
+    # status("Turning off WiFi")
+    # try:
+    #     subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
+    #         shell=True)
+    # except Exception:
+    #     LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
-    for i in reversed(range(15)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
+    # # Wait for 15 seconds
+    # for i in reversed(range(15)):
+    #     status("Waiting ({})".format(i))
+    #     time.sleep(1)
 
-    # Turn on WiFi
-    status("Turning on WiFi")
-    try:
-        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
-            shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning on WiFi")
+    # # Turn on WiFi
+    # status("Turning on WiFi")
+    # try:
+    #     subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
+    #         shell=True)
+    # except Exception:
+    #     LOGGER.exception("Exception while turning on WiFi")
 
-    # Wait for 5 seconds
-    for i in reversed(range(5)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
+    # # Wait for 5 seconds
+    # for i in reversed(range(5)):
+    #     status("Waiting ({})".format(i))
+    #     time.sleep(1)
 
-    try:
-        status("Updating clock")
-        run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
-        LOGGER.debug("Updated to current time")
-    except (TimeoutExpired, CalledProcessError):
-        LOGGER.warning("Unable to update time")
+    # try:
+    #     status("Updating clock")
+    #     subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
+    #     LOGGER.debug("Updated to current time")
+    # except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+    #     LOGGER.warning("Unable to update time")
 
     status("Loading queue")
     LOGGER.info("Loading persistent queue")
