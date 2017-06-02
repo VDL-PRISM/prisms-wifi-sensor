@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime
+import json
 import logging
 import os
 import signal
@@ -67,7 +68,7 @@ class DataResource(Resource):
             LOGGER.info("Got %s items from the queue", len(data))
 
             LOGGER.debug("Sending data: %s", data)
-            self.payload = msgpack.packb(data)
+            self.payload = json.dumps(data)
 
             return self
         except Exception:
