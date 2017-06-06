@@ -214,10 +214,10 @@ class LCDWriter:
                             self.update_queue_time.strftime("%H:%M")
 
         if self.display_aq:
-            part_1 = self.small
-            part_2 = self.large
+            part_1 = 'bad' if self.small is None else self.small
+            part_2 = 'bad' if self.large is None else self.large
         else:
-            valid_data = 'not ok' if self.small == 0 or self.large == 0 else 'ok'
+            valid_data = 'not ok' if self.small is None or self.large is None else 'ok'
             part_1 = ''
             part_2 = valid_data
 
