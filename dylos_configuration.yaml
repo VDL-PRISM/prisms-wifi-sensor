@@ -1,0 +1,18 @@
+ping:
+  - name: local
+    host: gateway.local
+    interval: 5
+    prefix: local_
+  - name: remote
+    host: p1db-prisms-p1.bmi.utah.edu
+    interval: 15
+    prefix: remote_
+
+lcd:
+  display_air_quality: yes
+
+wireless:
+
+dylos:
+
+sht21:

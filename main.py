@@ -1,23 +1,24 @@
 import argparse
 from datetime import datetime
+import gzip
+import json
 import logging
+import os
 import signal
 import socket
 import struct
-from subprocess import run, check_output, CalledProcessError, TimeoutExpired
+import sys
+import subprocess
 from threading import Thread
 import time
+from urllib.parse import urlparse
 
 from coapthon.server.coap import CoAP as CoAPServer
 from coapthon.resources.resource import Resource
 import msgpack
 from persistent_queue import PersistentQueue
-
-from sensors import sht21
-from sensors.lcd import LCDWriter
-from sensors.dylos import Dylos
-from sensors.wireless import WirelessMonitor
-from sensors.ping import PingMonitor
+import pkg_resources
+import yaml
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -25,19 +26,24 @@ logging.basicConfig(level=logging.DEBUG,
                            '%(name)s:%(message)s',
                     handlers=[
                         logging.handlers.TimedRotatingFileHandler(
-                            'dylos.log', when='midnight', backupCount=7,
-                            delay=True),
+                            'sensor.log', when='midnight', backupCount=7,
+                            delay=True,
+                            encoding="utf8"),
                         logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
 
 
-# pylint: disable=abstract-method
-class AirQualityResource(Resource):
-    def __init__(self, queue, lcd):
-        super().__init__("AirQualityResource")
+class DummyResource(Resource):
+    def __init__(self):
+        super().__init__("DummyResource")
+
+
+class DataResource(Resource):
+    def __init__(self, queue, input_sensors):
+        super().__init__("DataResource")
         self.queue = queue
-        self.lcd = lcd
+        self.sensors = input_sensors
 
         self.payload = None
 
@@ -52,94 +58,77 @@ class AirQualityResource(Resource):
             self.queue.delete(ack)
             self.queue.flush()
 
-            LOGGER.debug("Updating LCD")
-            self.lcd.queue_size = len(self.queue)
-            self.lcd.update_queue_time = datetime.now()
-            self.lcd.display_data()
+            for sensor in self.sensors:
+                sensor.transmitted_data(len(self.queue))
 
             # Get data from queue
-            size = min(size, len(self.queue))
-            LOGGER.info("Getting %s items from the queue", size)
+            LOGGER.info("Trying to get %s items from the queue", size)
             data = self.queue.peek(size)
 
-            # Make sure data is always a list
-            if isinstance(data, list) and len(data) > 0 and \
-               not isinstance(data[0], list):
-                data = [data]
+            if data is None:
+                self.payload = b''
+                return self
 
+            if not isinstance(data, list):
+                data = [data]
+            LOGGER.info("Got %s items from the queue", len(data))
+
+            # Convert all byte strings to strings
+            data = [{key.decode(): (value.decode() if isinstance(value, bytes) else value,
+                                    unit.decode()) for key, (value, unit) in d.items()} for d in data]
             LOGGER.debug("Sending data: %s", data)
-            self.payload = msgpack.packb(data)
+            self.payload = gzip.compress(json.dumps(data).encode())
 
             return self
         except Exception:
             LOGGER.exception("An error occurred!")
 
 
-# pylint: disable=abstract-method
-class DummyResource(Resource):
-    def __init__(self):
-        super().__init__("DummyResource")
-
-
 # Read data from the sensor
-def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
+def read_data(output_sensors, input_sensors, queue):
     sequence_number = 0
 
-    # Update LCD on boot
-    lcd.queue_size = len(queue)
-    lcd.address = wifi.ip_address().split('.')[-1]
-    lcd.display_data()
+    for sensor in input_sensors:
+        sensor.status("Starting sensors")
+
+    LOGGER.info("Starting sensors")
+    for sensor in output_sensors:
+        sensor.start()
 
     while RUNNING:
         try:
-            LOGGER.info("Getting new data from sensors")
-            LOGGER.debug("Reading from dylos sensor")
-            air_data = dylos.read()
-            LOGGER.debug("Reading from temperature sensor")
-            temp_data = temp_sensor()
-            LOGGER.debug("Reading from wifi sensor")
-            wifi_data = wifi.stats()
-            LOGGER.debug("Reading from local ping sensor")
-            local_ping_data = local_ping.stats()
-            LOGGER.debug("Reading from remote ping sensor")
-            remote_ping_data = remote_ping.stats()
+            # Sleep
+            for _ in range(60):
+                if not RUNNING:
+                    break
+                time.sleep(1)
 
             now = time.time()
             sequence_number += 1
+            data = {"sampletime": (now, 's'),
+                    "sequence": (sequence_number, 'sequence'),
+                    "queue_length": (len(queue) + 1, 'num')}
 
-            # Combine data together
-            data = {"sampletime": now,
-                    "sequence": sequence_number,
-                    **air_data,
-                    **temp_data,
-                    **wifi_data,
-                    **local_ping_data,
-                    **remote_ping_data}
-
-            # Transform the data
-            # ['associated', 'data_rate', 'humidity', 'invalid_misc', 'large',
-            #  'link_quality', 'local_ping_errors', 'local_ping_latency',
-            #  'local_ping_packet_loss', 'local_ping_total', 'noise_level',
-            #  'remote_ping_errors', 'remote_ping_latency',
-            #  'remote_ping_packet_loss', 'remote_ping_total',
-            #  'rx_invalid_crypt', 'rx_invalid_frag', 'rx_invalid_nwid',
-            #  'sampletime', 'sequence', 'signal_level', 'small',
-            #  'temperature', 'tx_retires']
-            data = [[v for k, v in sorted(data.items())]]
+            LOGGER.info("Getting new data from sensors")
+            for sensor in output_sensors:
+                data.update(sensor.read())
 
             # Save data for later
             LOGGER.debug("Pushing %s into queue", data)
             queue.push(data)
 
-            ip_address = wifi.ip_address()
+            # Write data to input sensors
+            for sensor in input_sensors:
+                sensor.data(data)
 
-            # Display results
-            lcd.small = air_data['small']
-            lcd.large = air_data['large']
-            lcd.update_air_time = datetime.now()
-            lcd.queue_size = len(queue)
-            lcd.address = ip_address.split('.')[-1]
-            lcd.display_data()
+            # Every 10 minutes, update time
+            if sequence_number % 10 == 0:
+                try:
+                    LOGGER.debug("Trying to update clock")
+                    subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
+                    LOGGER.debug("Updated to current time")
+                except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                    LOGGER.warning("Unable to update time")
 
         except KeyboardInterrupt:
             break
@@ -153,46 +142,150 @@ def read_data(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue):
                 time.sleep(15)
                 continue
 
-def main(display_aq=False):
-    # Start LCD screen
-    lcd = LCDWriter(display_aq)
+    LOGGER.debug("Exiting read loop")
+
+
+def load_sensors(config_file):
+    import importlib
+    sensors = load_sensor_files(config_file)
+
+    input_sensors = []
+    output_sensors = []
+
+    for sensor, config in sensors:
+        LOGGER.info("Loading %s", sensor)
+        module = importlib.import_module(sensor)
+
+        # Make sure module has proper method
+        if not hasattr(module, 'setup_sensor'):
+            LOGGER.error("Sensor must have setup_sensor function. Skipping...")
+            continue
+
+        for req in getattr(module, 'REQUIREMENTS', []):
+            if not install_package(req):
+                LOGGER.error('Not initializing %s because could not install '
+                              'dependency %s', sensor, req)
+                continue
+
+        LOGGER.info("Setting up %s", sensor)
+        sensor = module.setup_sensor(config)
+
+        if sensor is None:
+            LOGGER.error("\"setup_sensor\" returned None, skipping...")
+            continue
+
+        if sensor.type == 'input':
+            input_sensors.append(sensor)
+        elif sensor.type == 'output':
+            output_sensors.append(sensor)
+        else:
+            print('Unknown sensor type')
+
+    return input_sensors, output_sensors
+
+
+def load_sensor_files(config_file):
+    with open(config_file) as f:
+        config = yaml.load(f)
+
+    for component, component_configs in config.items():
+        # Make sure component_configs is a list
+        if component_configs is None:
+            component_configs = [None]
+        elif isinstance(component_configs, dict):
+            component_configs = [component_configs]
+
+        for component_config in component_configs:
+            if not os.path.exists(os.path.join('sensors', component)) and \
+               not os.path.exists(os.path.join('sensors', component) + '.py'):
+                LOGGER.error("Can not find %s", component)
+            else:
+                yield 'sensors.{}'.format(component), component_config
+
+def check_package_exists(package):
+    try:
+        req = pkg_resources.Requirement.parse(package)
+    except ValueError:
+        # This is a zip file
+        req = pkg_resources.Requirement.parse(urlparse(package).fragment)
+
+    return any(dist in req for dist in pkg_resources.working_set)
+
+
+def install_package(package):
+    if check_package_exists(package):
+        return True
+
+    LOGGER.info('Attempting install of %s', package)
+    args = [sys.executable, '-m', 'pip', 'install', package, '--upgrade']
+    LOGGER.debug(' '.join(args))
+
+    try:
+        return subprocess.call(args) == 0
+    except subprocess.SubprocessError:
+        LOGGER.exception('Unable to install package %s', package)
+        return False
+
+
+def main(config_file):
+    input_sensors, output_sensors = load_sensors(config_file)
+
+    for sensor in input_sensors:
+        sensor.start()
+
+    def status(message):
+        for sensor in input_sensors:
+            sensor.status(message)
 
     # Turn off WiFi
-    lcd.display("Turning off WiFi")
+    status("Turning off WiFi")
     try:
-        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
+        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
             shell=True)
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
     # Wait for 15 seconds
     for i in reversed(range(15)):
-        lcd.display("Waiting ({})".format(i))
+        status("Waiting ({})".format(i))
+        time.sleep(1)
+
+    # Turn off WiFi
+    status("Turning off WiFi")
+    try:
+        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
+            shell=True)
+    except Exception:
+        LOGGER.exception("Exception while turning off WiFi")
+
+    # Wait for 15 seconds
+    for i in reversed(range(15)):
+        status("Waiting ({})".format(i))
         time.sleep(1)
 
     # Turn on WiFi
-    lcd.display("Turning on WiFi")
+    status("Turning on WiFi")
     try:
-        run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
+        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
             shell=True)
     except Exception:
         LOGGER.exception("Exception while turning on WiFi")
 
     # Wait for 5 seconds
     for i in reversed(range(5)):
-        lcd.display("Waiting ({})".format(i))
+        status("Waiting ({})".format(i))
         time.sleep(1)
 
     try:
-        lcd.display("Updating clock")
-        run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
+        status("Updating clock")
+        subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=120)
         LOGGER.debug("Updated to current time")
-    except (TimeoutExpired, CalledProcessError):
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
         LOGGER.warning("Unable to update time")
 
-    lcd.display("Loading queue")
+    status("Loading queue")
     LOGGER.info("Loading persistent queue")
-    queue = PersistentQueue('dylos.queue',
+    queue = PersistentQueue('sensor.queue',
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
 
@@ -200,72 +293,44 @@ def main(display_aq=False):
     hostname = socket.gethostname()
     LOGGER.info("Hostname: %s", hostname)
 
-    LOGGER.info("Starting Dylos sensor")
-    dylos = Dylos()
-
-    LOGGER.info("Starting temperature sensor")
-    temp_sensor = sht21.setup()
-
-    LOGGER.info("Starting wireless monitor")
-    wifi = WirelessMonitor()
-
-    LOGGER.info("Starting local ping monitor")
-    local_ping = PingMonitor('gateway.local',
-                             interval=5,
-                             prefix='local_')
-
-    LOGGER.info("Starting remote ping monitor")
-    remote_ping = PingMonitor('p1db-prisms-p1.bmi.utah.edu',
-                              interval=15,
-                              prefix='remote_')
-
     # Start reading from sensors
     sensor_thread = Thread(target=read_data,
-                           args=(dylos, temp_sensor, lcd, wifi, local_ping, remote_ping, queue))
+                           args=(output_sensors, input_sensors, queue))
     sensor_thread.start()
 
     # Start server
     LOGGER.info("Starting server")
     server = CoAPServer(("224.0.1.187", 5683), multicast=True)
-    server.add_resource('air_quality/', AirQualityResource(queue, lcd))
+    server.add_resource('data/', DataResource(queue, input_sensors))
     server.add_resource('name={}'.format(hostname), DummyResource())
-    server.add_resource('type=dylos-2', DummyResource())
 
-    def stop_running(sig_num, frame):
-        global RUNNING
-
-        LOGGER.debug("Shutting down sensors")
-        RUNNING = False
-        dylos.stop()
-        local_ping.stop()
-        remote_ping.stop()
-
-        LOGGER.debug("Shutting down server")
-        server.close()
-
-        lcd.display("Bye!")
-
-    signal.signal(signal.SIGTERM, stop_running)
-    signal.signal(signal.SIGINT, stop_running)
-
-    # Keep listening, even if there is an error
     while True:
         try:
-            # Block until server.close() is called
             server.listen()
+        except KeyboardInterrupt:
+            global RUNNING
+
+            RUNNING = False
+            LOGGER.debug("Shutting down server")
+            server.close()
+
+            for sensor in output_sensors + input_sensors:
+                LOGGER.debug("Stopping %s", sensor.name)
+                sensor.stop()
+
+            break
         except Exception as e:
             LOGGER.error("Exception occurred while listening: %s", e)
-            if not RUNNING:
-                LOGGER.debug("Stopping because running is false")
-                break
 
+
+    LOGGER.debug("Waiting for sensor thread")
     sensor_thread.join()
     LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Dylos sensor')
-    parser.add_argument('--display_aq', action='store_true',
-                        help='Display air quality readings on LCD')
+    parser = argparse.ArgumentParser(description='Generalized WiFi sensor')
+    parser.add_argument('-c', '--config', default='configuration.yaml',
+                        help='Configuration file. The default is the ' \
+                             'configuration.yaml in the current directory.')
     args = parser.parse_args()
-
-    main(display_aq=args.display_aq)
+    main(args.config)

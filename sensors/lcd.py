@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 import threading
@@ -12,6 +13,10 @@ LOGGER = logging.getLogger(__name__)
 # To properly clock LCD I had to use exotic microsecond range sleep function
 def usleep(sleep_time):
     time.sleep(sleep_time / 100000.0)  # Can go higher, but will eat up whole CPU on that.
+
+
+def setup_sensor(config):
+    return LCDWriter(display_aq=config['display_air_quality'])
 
 
 class LCDDriver:
@@ -153,6 +158,8 @@ class LCDDriver:
 # pylint: disable=too-many-instance-attributes
 class LCDWriter:
     def __init__(self, display_aq=False):
+        self.type = 'input'
+        self.name = 'lcd'
         self.display_aq = display_aq
 
         self.lock = threading.Lock()
@@ -169,6 +176,8 @@ class LCDWriter:
 
         self.address = ""
 
+
+    def start(self):
         try:
             self.lcd = LCDDriver()
             self.lcd.setup()
@@ -177,6 +186,27 @@ class LCDWriter:
             LOGGER.error("Probably means it is not connected.")
             self.lcd = None
 
+    def stop(self):
+        pass
+
+    def status(self, message):
+        self.display(line1=message)
+
+    def data(self, data):
+        self.update_air_time = datetime.now()
+        self.queue_size = data['queue_length'][0]
+
+        self.small = data.get('small', [0])[0]
+        self.large = data.get('large', [0])[0]
+        self.address = data.get('ip_address', [''])[0].split('.')[-1]
+
+        self.display_data()
+
+    def transmitted_data(self, queue_length):
+        self.update_queue_time = datetime.now()
+        self.queue_size = queue_length
+        self.display_data()
+
     def display_data(self):
         update_air_time = "" if self.update_air_time is None else \
                           self.update_air_time.strftime("%H:%M")
@@ -184,10 +214,10 @@ class LCDWriter:
                             self.update_queue_time.strftime("%H:%M")
 
         if self.display_aq:
-            part_1 = self.small
-            part_2 = self.large
+            part_1 = 'bad' if self.small is None else self.small
+            part_2 = 'bad' if self.large is None else self.large
         else:
-            valid_data = 'not ok' if self.small == 0 or self.large == 0 else 'ok'
+            valid_data = 'not ok' if self.small is None or self.large is None else 'ok'
             part_1 = ''
             part_2 = valid_data
 
