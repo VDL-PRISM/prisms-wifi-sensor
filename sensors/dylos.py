@@ -75,7 +75,7 @@ class Dylos:
         try:
             while True:
                 data.append(self.queue.get_nowait())
-        except queue.Empty:
+        except Empty:
             pass
 
         if len(data) == 0:
