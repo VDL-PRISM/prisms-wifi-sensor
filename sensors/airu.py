@@ -1,4 +1,5 @@
 import logging
+import subprocess
 import time
 
 DHT22_PIN   = 'P8_11'
@@ -20,6 +21,12 @@ class AirStation:
 
         self.type = 'output'
         self.name = 'airu'
+
+        # Turn off LEDs
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr0/trigger', shell=True)
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr1/trigger', shell=True)
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr2/trigger', shell=True)
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr3/trigger', shell=True)
 
         UART.setup("UART1")
 

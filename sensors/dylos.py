@@ -1,6 +1,7 @@
 import logging
-from threading import Thread
 from queue import Queue, Empty
+import subprocess
+from threading import Thread
 
 import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_BBIO.UART as UART
@@ -22,6 +23,12 @@ class Dylos:
 
         self.running = True
         self.queue = Queue()
+
+        # Turn off LEDs
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr0/trigger', shell=True)
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr1/trigger', shell=True)
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr2/trigger', shell=True)
+        subprocess.call('echo none > /sys/class/leds/beaglebone\:green\:usr3/trigger', shell=True)
 
         # Setup UART
         UART.setup("UART1")
