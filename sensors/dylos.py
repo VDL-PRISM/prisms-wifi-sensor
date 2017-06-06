@@ -1,5 +1,6 @@
 import logging
-from threading import Thread, Lock
+from threading import Thread
+from queue import Queue, Empty
 
 import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_BBIO.UART as UART
@@ -20,9 +21,7 @@ class Dylos:
         self.name = 'dylos'
 
         self.running = True
-        self.lock = Lock()
-        self.small = 0
-        self.large = 0
+        self.queue = Queue()
 
         # Setup UART
         UART.setup("UART1")
@@ -64,10 +63,7 @@ class Dylos:
                 small, large = [int(x.strip()) for x in line.split(b',')]
                 LOGGER.debug("Small: %s, Large: %s", small, large)
 
-                with self.lock:
-                    self.small = small
-                    self.large = large
-
+                self.queue.put((small, large))
                 retries = 0
 
             retries += 1
@@ -75,11 +71,21 @@ class Dylos:
         self.ser.close()
 
     def read(self):
-        with self.lock:
-            if self.small == 0 and self.large == 0:
-                # Don't return data if it is not valid
-                return {}
-            return {"small": (self.small, 'pm'), "large": (self.large, 'pm')}
+        data = []
+        try:
+            while True:
+                data.append(self.queue.get_nowait())
+        except queue.Empty:
+            pass
+
+        if len(data) == 0:
+            return {"small": (None, 'pm'), "large": (None, 'pm')}
+
+        smalls, larges = zip(*data)
+        avg_small = sum(smalls) / len(smalls)
+        avg_large = sum(larges) / len(larges)
+
+        return {"small": (avg_small, 'pm'), "large": (avg_large, 'pm')}
 
     def stop(self):
         self.running = False
