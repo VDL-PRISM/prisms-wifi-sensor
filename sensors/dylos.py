@@ -85,7 +85,8 @@ class Dylos:
         avg_small = sum(smalls) / len(smalls)
         avg_large = sum(larges) / len(larges)
 
-        return {"small": (avg_small, 'pm'), "large": (avg_large, 'pm')}
+        return {"small": (int(round(avg_small)), 'pm'),
+                "large": (int(round(avg_large)), 'pm')}
 
     def stop(self):
         self.running = False
