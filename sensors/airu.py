@@ -104,6 +104,9 @@ class AirStation:
         import Adafruit_DHT
 
         humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, DHT22_PIN)
+        humidity = round(humidity, 2)
+        temperature = round(temperature, 2)
+
         pm1, pm25, pm10 = self.get_pm()
 
         data = {'humidity': (humidity, '%'),

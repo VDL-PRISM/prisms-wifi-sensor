@@ -27,12 +27,12 @@ class Sht21:
 
     def read(self):
         try:
-            temp = round(self._get_temp())
+            temp = round(self._get_temp(), 2)
         except Exception:
             temp = None
 
         try:
-            humidity = round(self._get_humidity())
+            humidity = round(self._get_humidity(), 2)
         except Exception:
             humidity = None
 
