@@ -104,8 +104,8 @@ class AirStation:
         import Adafruit_DHT
 
         humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, DHT22_PIN)
-        humidity = round(humidity, 2)
-        temperature = round(temperature, 2)
+        humidity = round(humidity, 2) if humidity is not None else None
+        temperature = round(temperature, 2) if temperature is not None else None
 
         pm1, pm25, pm10 = self.get_pm()
 
