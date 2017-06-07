@@ -32,8 +32,8 @@ def setup():
 
         try:
             LOGGER.debug("Reading from sht sensor")
-            return {"temperature": round(get_temp()),
-                    "humidity": round(get_humidity())}
+            return {"temperature": round(get_temp(), 2),
+                    "humidity": round(get_humidity(), 2)}
         except Exception as exp:
             LOGGER.error("Error while reading from sht: %s", exp)
             return {"temperature": None, "humidity": None}
