@@ -24,8 +24,9 @@ class LCDWriter:
         self.line1 = ""
         self.line2 = ""
 
-        self.small = 0
-        self.large = 0
+        self.pm1 = 0
+        self.pm25 = 0
+        self.pm10 = 0
         self.update_air_time = None
 
         self.queue_size = 0
@@ -47,8 +48,9 @@ class LCDWriter:
         self.update_air_time = datetime.now()
         self.queue_size = data['queue_length'][0]
 
-        self.small = data.get('small', [0])[0]
-        self.large = data.get('large', [0])[0]
+        self.pm1 = data.get('pm1', [0])[0]
+        self.pm25 = data.get('pm25', [0])[0]
+        self.pm10 = data.get('pm10', [0])[0]
         self.address = data.get('ip_address', [''])[0].split('.')[-1]
 
         self.display_data()
@@ -65,16 +67,19 @@ class LCDWriter:
                             self.update_queue_time.strftime("%H:%M")
 
         if self.display_aq:
-            part_1 = 'bad' if self.small is None else self.small
-            part_2 = 'bad' if self.large is None else self.large
+            part_1 = 'bad' if self.pm1 is None else self.pm1
+            part_2 = 'bad' if self.pm25 is None else self.pm25
+            part_3 = 'bad' if self.pm10 is None else self.pm10
         else:
-            valid_data = 'not ok' if self.small is None or self.large is None else 'ok'
+            valid_data = 'not ok' if self.pm1 is None or self.pm25 is None or self.pm10 is None else 'ok'
             part_1 = ''
-            part_2 = valid_data
+            part_2 = ''
+            part_3 = valid_data
 
-        line1 = "{: >5} {: >4} {}".format(part_1,
-                                          part_2,
-                                          update_air_time)
+        line1 = "{: >3} {: >3} {: >3} {}".format(part_1,
+                                                 part_2,
+                                                 part_3,
+                                                 update_air_time)
         line2 = "{: >4} {: >5} {}".format(self.address,
                                           self.queue_size,
                                           update_queue_time)
