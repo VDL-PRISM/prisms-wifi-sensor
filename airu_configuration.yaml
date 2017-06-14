@@ -8,6 +8,9 @@ ping:
     interval: 15
     prefix: remote_
 
+fake_lcd:
+  display_air_quality: yes
+
 wireless:
 
 airu:
