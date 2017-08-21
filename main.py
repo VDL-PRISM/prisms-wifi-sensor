@@ -71,12 +71,7 @@ def read_data(output_sensors, input_sensors, queue):
 
             # Every 10 minutes, update time
             if sequence_number % 10 == 0:
-                try:
-                    LOGGER.debug("Trying to update clock")
-                    subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
-                    LOGGER.debug("Updated to current time")
-                except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-                    LOGGER.warning("Unable to update time")
+                Thread(target=update_clock).start()
 
         except KeyboardInterrupt:
             break
@@ -201,6 +196,15 @@ def on_publish(client, userdata, mid):
 #callback called on disconnect
 def on_disconnect(cli,ud,rc):
     LOGGER.info("Disconnected: rc-" + str(rc))
+
+def update_clock():
+    try:
+        LOGGER.debug("Trying to update clock")
+        subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
+        LOGGER.debug("Updated to current time")
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        LOGGER.warning("Unable to update time")
+
 
 def main(config_file):
     # Load config file
