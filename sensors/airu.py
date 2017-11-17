@@ -66,7 +66,7 @@ class AirStation:
         chksum = 256*res[22] + res[23]
 
         if sum != chksum:
-            return None
+            return None, None, None
 
         # Get the PM readings using the TSI standard
         pm1_upperb = res[4]
@@ -108,6 +108,8 @@ class AirStation:
         temperature = round(temperature, 2) if temperature is not None else None
 
         pm1, pm25, pm10 = self.get_pm()
+        if pm1 is None:  # If one value is None, they are all
+            pm1, pm25, pm10 = self.get_pm()  # Try one more time
 
         data = {'humidity': (humidity, '%'),
                 'temperature': (temperature, '°C'),
