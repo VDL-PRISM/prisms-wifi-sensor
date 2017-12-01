@@ -12,8 +12,8 @@ import subprocess
 from threading import Thread
 import time
 from urllib.parse import urlparse
-import msgpack
 import logging.handlers
+import msgpack
 from persistent_queue import PersistentQueue
 import pkg_resources
 import yaml
@@ -32,8 +32,7 @@ logging.basicConfig(level=logging.DEBUG,
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
 
-
-#read data from the sensor
+# Read data from the sensor
 def read_data(output_sensors, input_sensors, queue):
     sequence_number = 0
 
@@ -188,10 +187,6 @@ def on_publish(client, userdata, mid):
 def on_disconnect(cli,ud,rc):
     LOGGER.info("Disconnected: Client-" + str(cli)+" userdata-" + str(ud)+" rc-" + str(rc))
 
-#callback called for message log
-def on_log(client,ud,level,buf):
-    LOGGER.info("Level"+str(level)+"Message"+str(buf))
-
 def main(config_file):
     input_sensors, output_sensors = load_sensors(config_file)
 
@@ -263,17 +258,19 @@ def main(config_file):
     sensor_thread.start()
     
     #load config file
-    with open("config.yml", 'r') as ymlfile:
-        cfg = yaml.load(ymlfile)
+    try:
+        with open(config_file, 'r') as ymlfile:
+            cfg = yaml.load(ymlfile)
+    except:
+        LOGGER.exception("Error loading config file")
 
     # Create mqtt client
-    client = paho.Client(cfg['mqtt']['ClientId'],cfg['mqtt']['ClSes'],cfg['mqtt']['udata'])
+    client = paho.Client()
     client.username_pw_set(username=cfg['mqtt']['uname'],password=cfg['mqtt']['password'])
     #define callabcks
     client.on_connect=on_connect
     client.on_publish = on_publish
     client.on_disconnect=on_disconnect
-    client.on_log=on_log
     #reconnect interval on disconnect
     client.reconnect_delay_set(3)
     #establish client connection
@@ -290,12 +287,13 @@ def main(config_file):
     while True:
         try:
             data=queue.peek(blocking=True)
-            LOGGER.debug("Publishing:"+str(data))
-            info=client.publish("prism/monitorA002",str(data) , qos=1)
+            data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
+            data=json.dumps(data)
+            info=client.publish("prism/"+cfg['mqtt']['uname'],data, qos=1)
             info.wait_for_publish()
-            while info[0]!=0:
-                time.sleep(30)
-                info=client.publish("prism/monitorA002",str(data) , qos=1)
+            while info.rc!=0:
+                time.sleep(10)
+                info=client.publish("prism/"+cfg['mqtt']['uname'],data , qos=1)
                 info.wait_for_publish()
             LOGGER.info("Deleting data from queue")
             queue.delete()
@@ -311,12 +309,13 @@ def main(config_file):
                 sensor.stop()
             break
         except Exception as e:
-            client.loop_stop()
             LOGGER.error("Exception occurred while listening: %s", e)
-            sys.exit()
+            queue.delete()
+            queue.flush()
 
     LOGGER.debug("Waiting for sensor thread")
     sensor_thread.join()
+    client.loop_stop()
     LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
