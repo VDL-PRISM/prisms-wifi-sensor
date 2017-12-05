@@ -248,10 +248,9 @@ def main(config_file):
     queue = PersistentQueue('sensor.queue',
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
-
-    LOGGER.info("Getting host name")
-    hostname = socket.gethostname()
-    LOGGER.info("Hostname: %s", hostname)
+    bad_queue = PersistentQueue('sensor.bad_queue',
+                                dumps=msgpack.packb,
+                                loads=msgpack.unpackb)
 
     # Start reading from sensors
     sensor_thread = Thread(target=read_data, args=(output_sensors, input_sensors, queue))
@@ -289,32 +288,35 @@ def main(config_file):
             data=queue.peek(blocking=True)
             data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
             data=json.dumps(data)
-            info=client.publish("prism/"+cfg['mqtt']['uname'],data, qos=1)
+            info=client.publish("prism/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
             info.wait_for_publish()
             while info.rc!=0:
                 time.sleep(10)
-                info=client.publish("prism/"+cfg['mqtt']['uname'],data , qos=1)
+                info=client.publish("prism/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
                 info.wait_for_publish()
+            for sensor in input_sensors:
+                sensor.transmitted_data(len(queue))
             LOGGER.info("Deleting data from queue")
             queue.delete()
             queue.flush()
         except KeyboardInterrupt:
             global RUNNING
             RUNNING = False
-            LOGGER.debug("Shutting down client")
-            client.loop_stop()
-
             for sensor in output_sensors + input_sensors:
                 LOGGER.debug("Stopping %s", sensor.name)
                 sensor.stop()
             break
         except Exception as e:
-            LOGGER.error("Exception occurred while listening: %s", e)
+            bad_data=queue.peek()
+            LOGGER.error("Exception- %s occurred while listening to data %s", e,str(bad_data))
+            LOGGER.info("Pushing data into bad queue")
+            error_msg={"message":(str(e)), "data":(data)}
+            bad_queue.push(bad_data)
             queue.delete()
             queue.flush()
-
     LOGGER.debug("Waiting for sensor thread")
     sensor_thread.join()
+    LOGGER.debug("Shutting down client")
     client.loop_stop()
     LOGGER.debug("Quitting...")
 
