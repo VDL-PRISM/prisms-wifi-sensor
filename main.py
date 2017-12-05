@@ -288,17 +288,18 @@ def main(config_file):
             data=queue.peek(blocking=True)
             data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
             data=json.dumps(data)
-            info=client.publish("prism/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
+            info=client.publish("prisms/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
             info.wait_for_publish()
             while info.rc!=0:
                 time.sleep(10)
-                info=client.publish("prism/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
+                info=client.publish("prisms/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
                 info.wait_for_publish()
-            for sensor in input_sensors:
-                sensor.transmitted_data(len(queue))
             LOGGER.info("Deleting data from queue")
             queue.delete()
             queue.flush()
+            for sensor in input_sensors:
+                sensor.transmitted_data(len(queue))
+
         except KeyboardInterrupt:
             global RUNNING
             RUNNING = False
@@ -310,8 +311,8 @@ def main(config_file):
             bad_data=queue.peek()
             LOGGER.error("Exception- %s occurred while listening to data %s", e,str(bad_data))
             LOGGER.info("Pushing data into bad queue")
-            error_msg={"message":(str(e)), "data":(data)}
-            bad_queue.push(bad_data)
+            error_msg={"message":(str(e)), "data":(str(data))}
+            bad_queue.push(error_msg)
             queue.delete()
             queue.flush()
     LOGGER.debug("Waiting for sensor thread")
