@@ -12,14 +12,13 @@ import subprocess
 from threading import Thread
 import time
 from urllib.parse import urlparse
-
-from coapthon.server.coap import CoAP as CoAPServer
-from coapthon.resources.resource import Resource
+import logging.handlers
 import msgpack
 from persistent_queue import PersistentQueue
 import pkg_resources
 import yaml
-
+import paho.mqtt.client as paho
+import time
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(threadName)s:%(levelname)s:'
@@ -32,57 +31,6 @@ logging.basicConfig(level=logging.DEBUG,
                         logging.StreamHandler()])
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
-
-
-class DummyResource(Resource):
-    def __init__(self):
-        super().__init__("DummyResource")
-
-
-class DataResource(Resource):
-    def __init__(self, queue, input_sensors):
-        super().__init__("DataResource")
-        self.queue = queue
-        self.sensors = input_sensors
-
-        self.payload = None
-
-    def render_GET(self, request):
-        try:
-            LOGGER.info("Received GET request with payload: %s",
-                         repr(request.payload))
-            ack, size = struct.unpack('!HH', request.payload)
-
-            # Delete the amount of data that has been ACK'd
-            LOGGER.info("Deleting %s items from the queue", ack)
-            self.queue.delete(ack)
-            self.queue.flush()
-
-            for sensor in self.sensors:
-                sensor.transmitted_data(len(self.queue))
-
-            # Get data from queue
-            LOGGER.info("Trying to get %s items from the queue", size)
-            data = self.queue.peek(size)
-
-            if data is None:
-                self.payload = b''
-                return self
-
-            if not isinstance(data, list):
-                data = [data]
-            LOGGER.info("Got %s items from the queue", len(data))
-
-            # Convert all byte strings to strings
-            data = [{key.decode(): (value.decode() if isinstance(value, bytes) else value,
-                                    unit.decode()) for key, (value, unit) in d.items()} for d in data]
-            LOGGER.debug("Sending data: %s", data)
-            self.payload = gzip.compress(json.dumps(data).encode())
-
-            return self
-        except Exception:
-            LOGGER.exception("An error occurred!")
-
 
 # Read data from the sensor
 def read_data(output_sensors, input_sensors, queue):
@@ -123,7 +71,12 @@ def read_data(output_sensors, input_sensors, queue):
 
             # Every 10 minutes, update time
             if sequence_number % 10 == 0:
-                Thread(target=update_clock).start()
+                try:
+                    LOGGER.debug("Trying to update clock")
+                    subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
+                    LOGGER.debug("Updated to current time")
+                except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                    LOGGER.warning("Unable to update time")
 
         except KeyboardInterrupt:
             break
@@ -143,7 +96,6 @@ def read_data(output_sensors, input_sensors, queue):
 def load_sensors(config_file):
     import importlib
     sensors = load_sensor_files(config_file)
-
     input_sensors = []
     output_sensors = []
 
@@ -220,16 +172,20 @@ def install_package(package):
     except subprocess.SubprocessError:
         LOGGER.exception('Unable to install package %s', package)
         return False
+#callback called on connection setup
+def on_connect(cli,ud,flag,rc):
+    if rc==0:
+        LOGGER.info("connected OK: client:" + str(cli)+" "+"userdata:" + str(ud)+" rc:" + str(rc))
+    else:
+        LOGGER.error("Bad connection: Returned code=",rc)
 
-
-def update_clock():
-    try:
-        LOGGER.debug("Trying to update clock")
-        subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
-        LOGGER.debug("Updated to current time")
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-        LOGGER.warning("Unable to update time")
-
+#callback called on message publish
+def on_publish(client, userdata, mid):
+    LOGGER.info("Publish successful: Mid- "+str(mid)+str(userdata))
+ 
+#callback called on disconnect
+def on_disconnect(cli,ud,rc):
+    LOGGER.info("Disconnected: Client-" + str(cli)+" userdata-" + str(ud)+" rc-" + str(rc))
 
 def main(config_file):
     input_sensors, output_sensors = load_sensors(config_file)
@@ -241,41 +197,41 @@ def main(config_file):
         for sensor in input_sensors:
             sensor.status(message)
 
-    # Turn off WiFi
+     #Turn off WiFi
     status("Turning off WiFi")
     try:
         subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-            shell=True)
+             shell=True)
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
+     # Wait for 15 seconds
     for i in reversed(range(15)):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-    # Turn off WiFi
+     # Turn off WiFi
     status("Turning off WiFi")
     try:
         subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-            shell=True)
+             shell=True)
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
-    # Wait for 15 seconds
+     # Wait for 15 seconds
     for i in reversed(range(15)):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-    # Turn on WiFi
+     # Turn on WiFi
     status("Turning on WiFi")
     try:
         subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
-            shell=True)
+             shell=True)
     except Exception:
         LOGGER.exception("Exception while turning on WiFi")
 
-    # Wait for 5 seconds
+     # Wait for 5 seconds
     for i in reversed(range(5)):
         status("Waiting ({})".format(i))
         time.sleep(1)
@@ -292,43 +248,77 @@ def main(config_file):
     queue = PersistentQueue('sensor.queue',
                             dumps=msgpack.packb,
                             loads=msgpack.unpackb)
-
-    LOGGER.info("Getting host name")
-    hostname = socket.gethostname()
-    LOGGER.info("Hostname: %s", hostname)
+    bad_queue = PersistentQueue('sensor.bad_queue',
+                                dumps=msgpack.packb,
+                                loads=msgpack.unpackb)
 
     # Start reading from sensors
-    sensor_thread = Thread(target=read_data,
-                           args=(output_sensors, input_sensors, queue))
+    sensor_thread = Thread(target=read_data, args=(output_sensors, input_sensors, queue))
     sensor_thread.start()
+    
+    #load config file
+    try:
+        with open(config_file, 'r') as ymlfile:
+            cfg = yaml.load(ymlfile)
+    except:
+        LOGGER.exception("Error loading config file")
 
-    # Start server
-    LOGGER.info("Starting server")
-    server = CoAPServer(("224.0.1.187", 5683), multicast=True)
-    server.add_resource('data/', DataResource(queue, input_sensors))
-    server.add_resource('name={}'.format(hostname), DummyResource())
-
+    # Create mqtt client
+    client = paho.Client()
+    client.username_pw_set(username=cfg['mqtt']['uname'],password=cfg['mqtt']['password'])
+    #define callabcks
+    client.on_connect=on_connect
+    client.on_publish = on_publish
+    client.on_disconnect=on_disconnect
+    #reconnect interval on disconnect
+    client.reconnect_delay_set(3)
+    #establish client connection
     while True:
         try:
-            server.listen()
+            client.connect(cfg['mqtt']['server'],cfg['mqtt']['port'])
+            LOGGER.info("Client connected successfully to broker")
+            break
+        except:
+            LOGGER.exception("Connection failure...trying to reconnect...")
+            time.sleep(15)
+    client.loop_start()
+    #continuosly get data from queue and publish to broker
+    while True:
+        try:
+            data=queue.peek(blocking=True)
+            data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
+            data=json.dumps(data)
+            info=client.publish("prisms/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
+            info.wait_for_publish()
+            while info.rc!=0:
+                time.sleep(10)
+                info=client.publish("prisms/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
+                info.wait_for_publish()
+            LOGGER.info("Deleting data from queue")
+            queue.delete()
+            queue.flush()
+            for sensor in input_sensors:
+                sensor.transmitted_data(len(queue))
+
         except KeyboardInterrupt:
             global RUNNING
-
             RUNNING = False
-            LOGGER.debug("Shutting down server")
-            server.close()
-
             for sensor in output_sensors + input_sensors:
                 LOGGER.debug("Stopping %s", sensor.name)
                 sensor.stop()
-
             break
         except Exception as e:
-            LOGGER.error("Exception occurred while listening: %s", e)
-
-
+            bad_data=queue.peek()
+            LOGGER.error("Exception- %s occurred while listening to data %s", e,str(bad_data))
+            LOGGER.info("Pushing data into bad queue")
+            error_msg={"message":(str(e)), "data":(str(data))}
+            bad_queue.push(error_msg)
+            queue.delete()
+            queue.flush()
     LOGGER.debug("Waiting for sensor thread")
     sensor_thread.join()
+    LOGGER.debug("Shutting down client")
+    client.loop_stop()
     LOGGER.debug("Quitting...")
 
 if __name__ == '__main__':
