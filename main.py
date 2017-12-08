@@ -179,7 +179,7 @@ def on_connect(cli,ud,flag,rc):
         info=client.publish("prisms/{}/status".format(ud['uname']),
                             "online",
                             qos=1,
-                            retrain=True)
+                            retain=True)
         info.wait_for_publish()
     else:
         LOGGER.error("Bad connection: Returned code=",rc)
@@ -284,7 +284,7 @@ def main(config_file):
     client.will_set("prisms/{}/status".format(cfg['mqtt']['uname']),
                     payload="offline",
                     qos=1,
-                    retrain=True)
+                    retain=True)
 
     #establish client connection
     while True:
@@ -327,7 +327,7 @@ def main(config_file):
             info=client.publish("prisms/{}/status".format(cfg['mqtt']['uname']),
                                 "Bad queue",
                                 qos=1,
-                                retrain=True)
+                                retain=True)
             info.wait_for_publish()
             break
         except Exception as e:
