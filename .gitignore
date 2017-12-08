@@ -1,5 +1,6 @@
 queue
 *.queue
+*.bad_queue
 dylos.log
 .python-version
 
