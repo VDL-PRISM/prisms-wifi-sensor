@@ -278,6 +278,9 @@ def main(config_file):
     #reconnect interval on disconnect
     client.reconnect_delay_set(3)
 
+    if 'ca_certs' in cfg['mqtt']:
+        client.tls_set(ca_certs=cfg['mqtt']['ca_certs'])
+
     client.will_set("prisms/{}/status".format(cfg['mqtt']['uname']),
                     payload="offline",
                     qos=1,
