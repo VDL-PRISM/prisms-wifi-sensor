@@ -176,13 +176,18 @@ def install_package(package):
 def on_connect(cli,ud,flag,rc):
     if rc==0:
         LOGGER.info("connected OK: client:" + str(cli)+" "+"userdata:" + str(ud)+" rc:" + str(rc))
+        info=client.publish("prisms/{}/status".format(ud['uname']),
+                            "online",
+                            qos=1,
+                            retrain=True)
+        info.wait_for_publish()
     else:
         LOGGER.error("Bad connection: Returned code=",rc)
 
 #callback called on message publish
 def on_publish(client, userdata, mid):
     LOGGER.info("Publish successful: Mid- "+str(mid)+str(userdata))
- 
+
 #callback called on disconnect
 def on_disconnect(cli,ud,rc):
     LOGGER.info("Disconnected: Client-" + str(cli)+" userdata-" + str(ud)+" rc-" + str(rc))
@@ -255,7 +260,7 @@ def main(config_file):
     # Start reading from sensors
     sensor_thread = Thread(target=read_data, args=(output_sensors, input_sensors, queue))
     sensor_thread.start()
-    
+
     #load config file
     try:
         with open(config_file, 'r') as ymlfile:
@@ -264,7 +269,7 @@ def main(config_file):
         LOGGER.exception("Error loading config file")
 
     # Create mqtt client
-    client = paho.Client()
+    client = paho.Client(userdata=cfg['mqtt'])
     client.username_pw_set(username=cfg['mqtt']['uname'],password=cfg['mqtt']['password'])
     #define callabcks
     client.on_connect=on_connect
@@ -272,6 +277,12 @@ def main(config_file):
     client.on_disconnect=on_disconnect
     #reconnect interval on disconnect
     client.reconnect_delay_set(3)
+
+    client.will_set("prisms/{}/status".format(cfg['mqtt']['uname']),
+                    payload="offline",
+                    qos=1,
+                    retrain=True)
+
     #establish client connection
     while True:
         try:
@@ -282,6 +293,7 @@ def main(config_file):
             LOGGER.exception("Connection failure...trying to reconnect...")
             time.sleep(15)
     client.loop_start()
+
     #continuosly get data from queue and publish to broker
     while True:
         try:
@@ -306,6 +318,14 @@ def main(config_file):
             for sensor in output_sensors + input_sensors:
                 LOGGER.debug("Stopping %s", sensor.name)
                 sensor.stop()
+            break
+
+        except msgpack.exceptions.UnpackValueError as e:
+            info=client.publish("prisms/{}/status".format(cfg['mqtt']['uname']),
+                                "Bad queue",
+                                qos=1,
+                                retrain=True)
+            info.wait_for_publish()
             break
         except Exception as e:
             bad_data=queue.peek()
