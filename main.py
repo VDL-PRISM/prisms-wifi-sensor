@@ -100,6 +100,10 @@ def load_sensors(config_file):
     output_sensors = []
 
     for sensor, config in sensors:
+        if sensor == 'device':
+            # Ignore device specific configuration: it is not a sensor
+            continue
+
         LOGGER.info("Loading %s", sensor)
         module = importlib.import_module(sensor)
 
