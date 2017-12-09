@@ -175,12 +175,11 @@ def install_package(package):
 #callback called on connection setup
 def on_connect(cli,ud,flag,rc):
     if rc==0:
-        LOGGER.info("connected OK: client:" + str(cli)+" "+"userdata:" + str(ud)+" rc:" + str(rc))
-        info=client.publish("prisms/{}/status".format(ud['uname']),
-                            "online",
-                            qos=1,
-                            retain=True)
-        info.wait_for_publish()
+        LOGGER.info("connected OK rc:" + str(rc))
+        cli.publish("prisms/{}/status".format(ud['uname']),
+                    "online",
+                    qos=1,
+                    retain=True)
     else:
         LOGGER.error("Bad connection: Returned code=",rc)
 
