@@ -185,11 +185,11 @@ def on_connect(cli,ud,flag,rc):
 
 #callback called on message publish
 def on_publish(client, userdata, mid):
-    LOGGER.info("Publish successful: Mid- "+str(mid)+str(userdata))
+    LOGGER.info("Publish successful: Mid- "+str(mid))
 
 #callback called on disconnect
 def on_disconnect(cli,ud,rc):
-    LOGGER.info("Disconnected: Client-" + str(cli)+" userdata-" + str(ud)+" rc-" + str(rc))
+    LOGGER.info("Disconnected: rc-" + str(rc))
 
 def main(config_file):
     input_sensors, output_sensors = load_sensors(config_file)
@@ -299,6 +299,7 @@ def main(config_file):
     #continuosly get data from queue and publish to broker
     while True:
         try:
+            LOGGER.info("Waiting for data in queue")
             data=queue.peek(blocking=True)
             data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
             data=json.dumps(data)
@@ -323,6 +324,7 @@ def main(config_file):
             break
 
         except msgpack.exceptions.UnpackValueError as e:
+            LOGGER.exception("Unable to unpack data")
             info=client.publish("prisms/{}/status".format(cfg['mqtt']['uname']),
                                 "Bad queue",
                                 qos=1,
