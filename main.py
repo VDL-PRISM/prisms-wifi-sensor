@@ -188,7 +188,7 @@ def on_connect(cli,ud,flag,rc):
                     retain=True)
 
         cli.publish("prisms/{}/metadata".format(uname),
-                    {"version": ud['version']},
+                    json.dumps({"version": ud['version']}),
                     qos=1,
                     retain=True)
     else:
