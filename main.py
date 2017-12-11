@@ -270,6 +270,7 @@ def main(config_file):
             cfg = yaml.load(ymlfile)
     except:
         LOGGER.exception("Error loading config file")
+        exit()
 
     mqtt_cfg = cfg['device']['mqtt']
 
