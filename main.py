@@ -271,9 +271,11 @@ def main(config_file):
     except:
         LOGGER.exception("Error loading config file")
 
+    mqtt_cfg = cfg['device']['mqtt']
+
     # Create mqtt client
-    client = paho.Client(userdata=cfg['mqtt'])
-    client.username_pw_set(username=cfg['mqtt']['uname'],password=cfg['mqtt']['password'])
+    client = paho.Client(userdata=mqtt_cfg)
+    client.username_pw_set(username=mqtt_cfg['uname'],password=mqtt_cfg['password'])
     #define callabcks
     client.on_connect=on_connect
     client.on_publish = on_publish
@@ -281,10 +283,10 @@ def main(config_file):
     #reconnect interval on disconnect
     client.reconnect_delay_set(3)
 
-    if 'ca_certs' in cfg['mqtt']:
-        client.tls_set(ca_certs=cfg['mqtt']['ca_certs'])
+    if 'ca_certs' in mqtt_cfg:
+        client.tls_set(ca_certs=mqtt_cfg['ca_certs'])
 
-    client.will_set("prisms/{}/status".format(cfg['mqtt']['uname']),
+    client.will_set("prisms/{}/status".format(mqtt_cfg['uname']),
                     payload="offline",
                     qos=1,
                     retain=True)
@@ -292,7 +294,7 @@ def main(config_file):
     #establish client connection
     while True:
         try:
-            client.connect(cfg['mqtt']['server'],cfg['mqtt']['port'])
+            client.connect(mqtt_cfg['server'],mqtt_cfg['port'])
             LOGGER.info("Client connected successfully to broker")
             break
         except:
@@ -307,11 +309,11 @@ def main(config_file):
             data=queue.peek(blocking=True)
             data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
             data=json.dumps(data)
-            info=client.publish("prisms/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
+            info=client.publish("prisms/{}/data".format(mqtt_cfg['uname']),data, qos=1)
             info.wait_for_publish()
             while info.rc!=0:
                 time.sleep(10)
-                info=client.publish("prisms/{}/data".format(cfg['mqtt']['uname']),data, qos=1)
+                info=client.publish("prisms/{}/data".format(mqtt_cfg['uname']),data, qos=1)
                 info.wait_for_publish()
             LOGGER.info("Deleting data from queue")
             queue.delete()
@@ -329,7 +331,7 @@ def main(config_file):
 
         except msgpack.exceptions.UnpackValueError as e:
             LOGGER.exception("Unable to unpack data")
-            info=client.publish("prisms/{}/status".format(cfg['mqtt']['uname']),
+            info=client.publish("prisms/{}/status".format(mqtt_cfg['uname']),
                                 "Bad queue",
                                 qos=1,
                                 retain=True)
