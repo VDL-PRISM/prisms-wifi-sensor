@@ -179,9 +179,16 @@ def install_package(package):
 #callback called on connection setup
 def on_connect(cli,ud,flag,rc):
     if rc==0:
+        uname = ud['mqtt']['uname']
+
         LOGGER.info("connected OK rc:" + str(rc))
-        cli.publish("prisms/{}/status".format(ud['uname']),
+        cli.publish("prisms/{}/status".format(uname),
                     "online",
+                    qos=1,
+                    retain=True)
+
+        cli.publish("prisms/{}/metadata".format(uname),
+                    {"version": ud['version']},
                     qos=1,
                     retain=True)
     else:
@@ -269,13 +276,21 @@ def main(config_file):
         with open(config_file, 'r') as ymlfile:
             cfg = yaml.load(ymlfile)
     except:
-        LOGGER.exception("Error loading config file")
+        LOGGER.error("Error loading config file")
         exit()
 
     mqtt_cfg = cfg['device']['mqtt']
 
+    # Load MQTT username and password
+    try:
+        mqtt_cfg['uname'] = os.environ['MQTT_USERNAME']
+        mqtt_cfg['password'] = os.environ['MQTT_PASSWORD']
+    except KeyError:
+        LOGGER.error("MQTT_USERNAME or MQTT_PASSWORD have not been defined")
+        exit()
+
     # Create mqtt client
-    client = paho.Client(userdata=mqtt_cfg)
+    client = paho.Client(userdata=cfg['device'])
     client.username_pw_set(username=mqtt_cfg['uname'],password=mqtt_cfg['password'])
     #define callabcks
     client.on_connect=on_connect
