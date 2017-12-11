@@ -203,6 +203,24 @@ def on_disconnect(cli,ud,rc):
     LOGGER.info("Disconnected: rc-" + str(rc))
 
 def main(config_file):
+    # Load config file
+    try:
+        with open(config_file, 'r') as ymlfile:
+            cfg = yaml.load(ymlfile)
+    except:
+        LOGGER.error("Error loading config file")
+        exit()
+
+    mqtt_cfg = cfg['device']['mqtt']
+
+    # Load MQTT username and password
+    try:
+        mqtt_cfg['uname'] = os.environ['MQTT_USERNAME']
+        mqtt_cfg['password'] = os.environ['MQTT_PASSWORD']
+    except KeyError:
+        LOGGER.error("MQTT_USERNAME or MQTT_PASSWORD have not been defined")
+        exit()
+
     input_sensors, output_sensors = load_sensors(config_file)
 
     for sensor in input_sensors:
@@ -270,24 +288,6 @@ def main(config_file):
     # Start reading from sensors
     sensor_thread = Thread(target=read_data, args=(output_sensors, input_sensors, queue))
     sensor_thread.start()
-
-    #load config file
-    try:
-        with open(config_file, 'r') as ymlfile:
-            cfg = yaml.load(ymlfile)
-    except:
-        LOGGER.error("Error loading config file")
-        exit()
-
-    mqtt_cfg = cfg['device']['mqtt']
-
-    # Load MQTT username and password
-    try:
-        mqtt_cfg['uname'] = os.environ['MQTT_USERNAME']
-        mqtt_cfg['password'] = os.environ['MQTT_PASSWORD']
-    except KeyError:
-        LOGGER.error("MQTT_USERNAME or MQTT_PASSWORD have not been defined")
-        exit()
 
     # Create mqtt client
     client = paho.Client(userdata=cfg['device'])
