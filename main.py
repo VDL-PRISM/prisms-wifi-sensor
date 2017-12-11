@@ -100,10 +100,6 @@ def load_sensors(config_file):
     output_sensors = []
 
     for sensor, config in sensors:
-        if sensor == 'device':
-            # Ignore device specific configuration: it is not a sensor
-            continue
-
         LOGGER.info("Loading %s", sensor)
         module = importlib.import_module(sensor)
 
@@ -147,6 +143,10 @@ def load_sensor_files(config_file):
             component_configs = [component_configs]
 
         for component_config in component_configs:
+            if component == 'device':
+                # Ignore device specific configuration: it is not a sensor
+                continue
+
             if not os.path.exists(os.path.join('sensors', component)) and \
                not os.path.exists(os.path.join('sensors', component) + '.py'):
                 LOGGER.error("Can not find %s", component)
@@ -192,7 +192,7 @@ def on_connect(cli,ud,flag,rc):
                     qos=1,
                     retain=True)
     else:
-        LOGGER.error("Bad connection: Returned code=",rc)
+        LOGGER.error("Bad connection: Returned code=%s",rc)
 
 #callback called on message publish
 def on_publish(client, userdata, mid):
