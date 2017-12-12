@@ -299,7 +299,7 @@ def main(config_file):
 
     # Create mqtt client
     client = paho.Client(userdata=cfg['device'])
-    client.username_pw_set(username=mqtt_cfg['uname'],password=mqtt_cfg['password'])
+    client.username_pw_set(username=mqtt_cfg['uname'], password=mqtt_cfg['password'])
     # Define callabcks
     client.on_connect=on_connect
     client.on_publish = on_publish
@@ -319,7 +319,8 @@ def main(config_file):
     # Establish client connection
     while True:
         try:
-            client.connect(mqtt_cfg['server'],mqtt_cfg['port'])
+            LOGGER.info("Trying to connect to borker")
+            client.connect(mqtt_cfg['server'], mqtt_cfg['port'])
             LOGGER.info("Client connected successfully to broker")
             break
         except:
