@@ -3,6 +3,7 @@ queue
 *.bad_queue
 dylos.log
 .python-version
+sensor.log*
 env
 
 *.pyc
