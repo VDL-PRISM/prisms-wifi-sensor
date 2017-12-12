@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
+EnvironmentFile=/root/dylos/env
 WorkingDirectory=/root/dylos
 ExecStart=/root/pyenv/versions/3.5.2/envs/dylos/bin/python main.py
 
