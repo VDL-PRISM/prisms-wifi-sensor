@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.DEBUG,
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
 
+
 # Read data from the sensor
 def read_data(output_sensors, input_sensors, queue):
     sequence_number = 0
@@ -86,6 +87,15 @@ def read_data(output_sensors, input_sensors, queue):
                 continue
 
     LOGGER.debug("Exiting read loop")
+
+
+def update_clock():
+    try:
+        LOGGER.debug("Trying to update clock")
+        subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
+        LOGGER.debug("Updated to current time")
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        LOGGER.warning("Unable to update time")
 
 
 def load_sensors(config_file):
@@ -148,6 +158,7 @@ def load_sensor_files(config_file):
             else:
                 yield 'sensors.{}'.format(component), component_config
 
+
 def check_package_exists(package):
     try:
         req = pkg_resources.Requirement.parse(package)
@@ -171,8 +182,9 @@ def install_package(package):
     except subprocess.SubprocessError:
         LOGGER.exception('Unable to install package %s', package)
         return False
-#callback called on connection setup
-def on_connect(cli,ud,flag,rc):
+
+
+def on_connect(cli, ud, flag, rc):
     if rc==0:
         uname = ud['mqtt']['uname']
 
@@ -189,21 +201,13 @@ def on_connect(cli,ud,flag,rc):
     else:
         LOGGER.error("Bad connection: Returned code=%s",rc)
 
-#callback called on message publish
+
 def on_publish(client, userdata, mid):
     LOGGER.info("Publish successful: Mid- "+str(mid))
 
-#callback called on disconnect
-def on_disconnect(cli,ud,rc):
-    LOGGER.info("Disconnected: rc-" + str(rc))
 
-def update_clock():
-    try:
-        LOGGER.debug("Trying to update clock")
-        subprocess.run("ntpdate -b -s -u pool.ntp.org", shell=True, check=True, timeout=45)
-        LOGGER.debug("Updated to current time")
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-        LOGGER.warning("Unable to update time")
+def on_disconnect(cli, ud, rc):
+    LOGGER.info("Disconnected: rc-" + str(rc))
 
 
 def main(config_file):
@@ -234,7 +238,7 @@ def main(config_file):
         for sensor in input_sensors:
             sensor.status(message)
 
-     #Turn off WiFi
+    # Turn off WiFi
     status("Turning off WiFi")
     try:
         subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
@@ -242,12 +246,12 @@ def main(config_file):
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
-     # Wait for 15 seconds
+    # Wait for 15 seconds
     for i in reversed(range(15)):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-     # Turn off WiFi
+    # Turn off WiFi
     status("Turning off WiFi")
     try:
         subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
@@ -255,12 +259,12 @@ def main(config_file):
     except Exception:
         LOGGER.exception("Exception while turning off WiFi")
 
-     # Wait for 15 seconds
+    # Wait for 15 seconds
     for i in reversed(range(15)):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-     # Turn on WiFi
+    # Turn on WiFi
     status("Turning on WiFi")
     try:
         subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifup $x; done",
@@ -268,7 +272,7 @@ def main(config_file):
     except Exception:
         LOGGER.exception("Exception while turning on WiFi")
 
-     # Wait for 5 seconds
+    # Wait for 5 seconds
     for i in reversed(range(5)):
         status("Waiting ({})".format(i))
         time.sleep(1)
@@ -296,22 +300,23 @@ def main(config_file):
     # Create mqtt client
     client = paho.Client(userdata=cfg['device'])
     client.username_pw_set(username=mqtt_cfg['uname'],password=mqtt_cfg['password'])
-    #define callabcks
+    # Define callabcks
     client.on_connect=on_connect
     client.on_publish = on_publish
     client.on_disconnect=on_disconnect
-    #reconnect interval on disconnect
+    # Reconnect interval on disconnect
     client.reconnect_delay_set(3)
 
     if 'ca_certs' in mqtt_cfg:
         client.tls_set(ca_certs=mqtt_cfg['ca_certs'])
 
+    # Set the last will to publish an offline message
     client.will_set("prisms/{}/status".format(mqtt_cfg['uname']),
                     payload="offline",
                     qos=1,
                     retain=True)
 
-    #establish client connection
+    # Establish client connection
     while True:
         try:
             client.connect(mqtt_cfg['server'],mqtt_cfg['port'])
@@ -322,22 +327,25 @@ def main(config_file):
             time.sleep(15)
     client.loop_start()
 
-    #continuosly get data from queue and publish to broker
+    # Continuously get data from queue and publish to broker
     while True:
         try:
             LOGGER.info("Waiting for data in queue")
-            data=queue.peek(blocking=True)
-            data={k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
-            data=json.dumps(data)
-            info=client.publish("prisms/{}/data".format(mqtt_cfg['uname']),data, qos=1)
+            data = queue.peek(blocking=True)
+            data = {k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
+            data = json.dumps(data)
+            info = client.publish("prisms/{}/data".format(mqtt_cfg['uname']), data, qos=1)
             info.wait_for_publish()
-            while info.rc!=0:
+
+            while info.rc != 0:
                 time.sleep(10)
-                info=client.publish("prisms/{}/data".format(mqtt_cfg['uname']),data, qos=1)
+                info=client.publish("prisms/{}/data".format(mqtt_cfg['uname']), data, qos=1)
                 info.wait_for_publish()
+
             LOGGER.info("Deleting data from queue")
             queue.delete()
             queue.flush()
+
             for sensor in input_sensors:
                 sensor.transmitted_data(len(queue))
 
@@ -357,6 +365,7 @@ def main(config_file):
                                 retain=True)
             info.wait_for_publish()
             break
+
         except Exception as e:
             bad_data=queue.peek()
             LOGGER.error("Exception- %s occurred while listening to data %s", e,str(bad_data))
@@ -365,11 +374,13 @@ def main(config_file):
             bad_queue.push(error_msg)
             queue.delete()
             queue.flush()
+
     LOGGER.debug("Waiting for sensor thread")
     sensor_thread.join()
     LOGGER.debug("Shutting down client")
     client.loop_stop()
     LOGGER.debug("Quitting...")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generalized WiFi sensor')
