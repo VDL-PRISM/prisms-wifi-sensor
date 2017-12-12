@@ -27,7 +27,7 @@ class Sht21:
 
     def read(self):
         try:
-            temp = round(self._get_temp(), 2)
+            temp = round(self._get_temp() * 1.8 + 32, 2)
         except Exception:
             temp = None
 
@@ -36,7 +36,7 @@ class Sht21:
         except Exception:
             humidity = None
 
-        return {'temperature': (temp, '°C'), 'humidity': (humidity, '%')}
+        return {'temperature': (temp, '°F'), 'humidity': (humidity, '%')}
 
     def stop(self):
         pass

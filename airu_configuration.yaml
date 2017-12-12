@@ -14,3 +14,11 @@ fake_lcd:
 wireless:
 
 airu:
+
+device:
+  version: 1
+
+  mqtt:
+    server: broker-prisms-p1.bmi.utah.edu
+    port: 8883
+    ca_certs: prisms-broker.crt
