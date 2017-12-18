@@ -251,19 +251,6 @@ def main(config_file):
         status("Waiting ({})".format(i))
         time.sleep(1)
 
-    # Turn off WiFi
-    status("Turning off WiFi")
-    try:
-        subprocess.run("iwconfig 2> /dev/null | grep -o '^[[:alnum:]]\+' | while read x; do ifdown $x; done",
-             shell=True)
-    except Exception:
-        LOGGER.exception("Exception while turning off WiFi")
-
-    # Wait for 15 seconds
-    for i in reversed(range(15)):
-        status("Waiting ({})".format(i))
-        time.sleep(1)
-
     # Turn on WiFi
     status("Turning on WiFi")
     try:
