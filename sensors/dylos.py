@@ -66,11 +66,14 @@ class Dylos:
                     GPIO.output(DYLOS_POWER_PIN, GPIO.LOW)
                     retries = 0
             else:
-                LOGGER.debug("Read from serial port: %s", line)
-                small, large = [int(x.strip()) for x in line.split(b',')]
-                LOGGER.debug("Small: %s, Large: %s", small, large)
+                try:
+                    LOGGER.debug("Read from serial port: %s", line)
+                    small, large = [int(x.strip()) for x in line.split(b',')]
+                    LOGGER.debug("Small: %s, Large: %s", small, large)
+                    self.queue.put((small, large))
+                except ValueError:
+                    LOGGER.error("Unable to parse data from serial port: %s", line)
 
-                self.queue.put((small, large))
                 retries = 0
 
             retries += 1
