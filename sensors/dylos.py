@@ -89,14 +89,14 @@ class Dylos:
             pass
 
         if len(data) == 0:
-            return {"small": (None, 'pm'), "large": (None, 'pm')}
+            return {"pm_small": (None, 'pm'), "pm_large": (None, 'pm')}
 
         smalls, larges = zip(*data)
         avg_small = sum(smalls) / len(smalls)
         avg_large = sum(larges) / len(larges)
 
-        return {"small": (int(round(avg_small)), 'pm'),
-                "large": (int(round(avg_large)), 'pm')}
+        return {"pm_small": (int(round(avg_small)), 'pm'),
+                "pm_large": (int(round(avg_large)), 'pm')}
 
     def stop(self):
         self.running = False
