@@ -57,7 +57,7 @@ def read_data(output_sensors, input_sensors, queue):
             data = {"sample_time": int(now * 1e6),
                     "data": {"sequence": sequence_number,
                              "queue_length": len(queue) + 1},
-                    "metadata": {"firmware": ???}}
+                    "metadata": {"firmware": get_firmware_version()}}
 
             LOGGER.info("Getting new data from sensors")
             for sensor in output_sensors:
@@ -88,6 +88,10 @@ def read_data(output_sensors, input_sensors, queue):
                 continue
 
     LOGGER.debug("Exiting read loop")
+
+
+def get_firmware_version():
+    return subprocess.check_output(["git", "describe"]).strip()
 
 
 def update_clock():
