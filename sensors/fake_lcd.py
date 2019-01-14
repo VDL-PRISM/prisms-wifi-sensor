@@ -48,10 +48,10 @@ class LCDWriter:
         self.update_air_time = datetime.now()
         self.queue_size = data['queue_length'][0]
 
-        self.pm1 = data.get('pm1', [0])[0]
-        self.pm25 = data.get('pm25', [0])[0]
-        self.pm10 = data.get('pm10', [0])[0]
-        self.address = data.get('ip_address', [''])[0].split('.')[-1]
+        self.pm1 = data.get('pm1', 0)
+        self.pm25 = data.get('pm25', 0)
+        self.pm10 = data.get('pm10', 0)
+        self.address = data.get('ip_address', '').split('.')[-1]
 
         self.display_data()
 
