@@ -54,13 +54,14 @@ def read_data(output_sensors, input_sensors, queue):
 
             now = time.time()
             sequence_number += 1
-            data = {"sampletime": (now, 's'),
-                    "sequence": (sequence_number, 'sequence'),
-                    "queue_length": (len(queue) + 1, 'num')}
+            data = {"sample_time": int(now * 1e6),
+                    "data": {"sequence": sequence_number,
+                             "queue_length": len(queue) + 1},
+                    "metadata": {"firmware": ???}}
 
             LOGGER.info("Getting new data from sensors")
             for sensor in output_sensors:
-                data.update(sensor.read())
+                data['data'].update(sensor.read())
 
             # Save data for later
             LOGGER.debug("Pushing %s into queue", data)

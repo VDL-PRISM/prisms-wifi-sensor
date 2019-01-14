@@ -91,10 +91,10 @@ class PingMonitor:
         with self.lock:
             latency = sum(self.latency) / len(self.latency) if len(self.latency) > 0 else 0
 
-            data = {self.prefix + 'ping_errors': (self.errors, 'num'),
-                    self.prefix + 'ping_latency': (latency, 'ms'),
-                    self.prefix + 'ping_packet_loss': (self.loss, 'num'),
-                    self.prefix + 'ping_total': (self.total, 'num')}
+            data = {self.prefix + 'ping_errors': self.errors,
+                    self.prefix + 'ping_latency': latency,
+                    self.prefix + 'ping_packet_loss': self.loss,
+                    self.prefix + 'ping_total': self.total}
 
             self.errors = 0
             self.loss = 0

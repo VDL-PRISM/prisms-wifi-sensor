@@ -33,7 +33,7 @@ class SensorName:
         while self.running:
             # Update state
             LOGGER.info("Updating state of sensor")
-            self.state = {'measurement_name': ('value', 'unit')}
+            self.state = {'measurement_name': 'value'}
 
             # Sleep
             self._sleep(60)
