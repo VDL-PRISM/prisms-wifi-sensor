@@ -111,11 +111,11 @@ class AirStation:
         if pm1 is None:  # If one value is None, they are all
             pm1, pm25, pm10 = self.get_pm()  # Try one more time
 
-        data = {'humidity': (humidity, '%'),
-                'temperature': (temperature, '°C'),
-                'pm1': (pm1, 'ug/m3'),
-                'pm25': (pm25, 'ug/m3'),
-                'pm10': (pm10, 'ug/m3')}
+        data = {'humidity': humidity,
+                'temperature': temperature,
+                'pm1': pm1,
+                'pm25': pm25,
+                'pm10': pm10}
 
 
         LOGGER.debug("Data from AirU: %s", data)

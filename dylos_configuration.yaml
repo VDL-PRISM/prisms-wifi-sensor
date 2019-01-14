@@ -1,26 +1,24 @@
-ping:
-  - name: local
-    host: gateway.local
-    interval: 5
-    prefix: local_
-  - name: remote
-    host: p1db-prisms-p1.bmi.utah.edu
-    interval: 15
-    prefix: remote_
+sensors:
+  ping:
+    - name: local
+      host: gateway.local
+      interval: 5
+      prefix: local_
+    - name: remote
+      host: p1db-prisms-p1.bmi.utah.edu
+      interval: 15
+      prefix: remote_
 
-lcd:
-  display_air_quality: yes
+  lcd:
+    display_air_quality: yes
 
-wireless:
+  wireless:
 
-dylos:
+  dylos:
 
-sht21:
+  sht21:
 
-device:
-  version: 1
-
-  mqtt:
-    server: broker-prisms-p1.bmi.utah.edu
-    port: 8883
-    ca_certs: prisms-broker.crt
+mqtt:
+  server: broker-prisms-p1.bmi.utah.edu
+  port: 8883
+  ca_certs: prisms-broker.crt

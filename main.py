@@ -54,13 +54,14 @@ def read_data(output_sensors, input_sensors, queue):
 
             now = time.time()
             sequence_number += 1
-            data = {"sampletime": (now, 's'),
-                    "sequence": (sequence_number, 'sequence'),
-                    "queue_length": (len(queue) + 1, 'num')}
+            data = {"sample_time": int(now * 1e6),
+                    "data": {"sequence": sequence_number,
+                             "queue_length": len(queue) + 1},
+                    "metadata": {"firmware": get_firmware_version()}}
 
             LOGGER.info("Getting new data from sensors")
             for sensor in output_sensors:
-                data.update(sensor.read())
+                data['data'].update(sensor.read())
 
             # Save data for later
             LOGGER.debug("Pushing %s into queue", data)
@@ -87,6 +88,10 @@ def read_data(output_sensors, input_sensors, queue):
                 continue
 
     LOGGER.debug("Exiting read loop")
+
+
+def get_firmware_version():
+    return subprocess.check_output(["git", "describe"]).strip().decode()
 
 
 def update_clock():
@@ -140,7 +145,7 @@ def load_sensor_files(config_file):
     with open(config_file) as f:
         config = yaml.load(f)
 
-    for component, component_configs in config.items():
+    for component, component_configs in config['sensors'].items():
         # Make sure component_configs is a list
         if component_configs is None:
             component_configs = [None]
@@ -186,18 +191,7 @@ def install_package(package):
 
 def on_connect(cli, ud, flag, rc):
     if rc==0:
-        uname = ud['mqtt']['uname']
-
         LOGGER.info("connected OK rc:" + str(rc))
-        cli.publish("prisms/{}/status".format(uname),
-                    "online",
-                    qos=1,
-                    retain=True)
-
-        cli.publish("prisms/{}/metadata".format(uname),
-                    json.dumps({"version": ud['version']}),
-                    qos=1,
-                    retain=True)
     else:
         LOGGER.error("Bad connection: Returned code=%s",rc)
 
@@ -219,7 +213,7 @@ def main(config_file):
         LOGGER.error("Error loading config file")
         exit()
 
-    mqtt_cfg = cfg['device']['mqtt']
+    mqtt_cfg = cfg['mqtt']
 
     # Load MQTT username and password
     try:
