@@ -174,6 +174,17 @@ def check_package_exists(package):
     return any(dist in req for dist in pkg_resources.working_set)
 
 
+def decode_dict(value):
+    """Recursively converts dictionary keys to strings."""
+    if not isinstance(value, dict):
+        if isinstance(value, bytes):
+            return value.decode()
+        else:
+            return value
+
+    return {k.decode(): decode_dict(v) for k, v in value.items()}
+
+
 def install_package(package):
     if check_package_exists(package):
         return True
@@ -314,7 +325,7 @@ def main(config_file):
         try:
             LOGGER.info("Waiting for data in queue")
             data = queue.peek(blocking=True)
-            data = {k.decode():(v.decode() if isinstance(v, bytes) else v, u.decode()) for k,(v,u) in data.items()}
+            data = decode_dict(data)
             data = json.dumps(data)
             info = client.publish("prisms/{}/data".format(mqtt_cfg['uname']), data, qos=1)
             info.wait_for_publish()
