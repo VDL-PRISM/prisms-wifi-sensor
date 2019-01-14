@@ -279,7 +279,7 @@ def main(config_file):
     sensor_thread.start()
 
     # Create mqtt client
-    client = paho.Client(userdata=cfg['device'])
+    client = paho.Client()
     client.username_pw_set(username=mqtt_cfg['uname'], password=mqtt_cfg['password'])
     # Define callabcks
     client.on_connect=on_connect
