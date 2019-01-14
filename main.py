@@ -140,7 +140,7 @@ def load_sensor_files(config_file):
     with open(config_file) as f:
         config = yaml.load(f)
 
-    for component, component_configs in config.items():
+    for component, component_configs in config['sensors'].items():
         # Make sure component_configs is a list
         if component_configs is None:
             component_configs = [None]
@@ -186,18 +186,7 @@ def install_package(package):
 
 def on_connect(cli, ud, flag, rc):
     if rc==0:
-        uname = ud['mqtt']['uname']
-
         LOGGER.info("connected OK rc:" + str(rc))
-        cli.publish("prisms/{}/status".format(uname),
-                    "online",
-                    qos=1,
-                    retain=True)
-
-        cli.publish("prisms/{}/metadata".format(uname),
-                    json.dumps({"version": ud['version']}),
-                    qos=1,
-                    retain=True)
     else:
         LOGGER.error("Bad connection: Returned code=%s",rc)
 
@@ -219,7 +208,7 @@ def main(config_file):
         LOGGER.error("Error loading config file")
         exit()
 
-    mqtt_cfg = cfg['device']['mqtt']
+    mqtt_cfg = cfg['mqtt']
 
     # Load MQTT username and password
     try:
