@@ -91,7 +91,7 @@ def read_data(output_sensors, input_sensors, queue):
 
 
 def get_firmware_version():
-    return subprocess.check_output(["git", "describe"]).strip()
+    return subprocess.check_output(["git", "describe"]).strip().decode()
 
 
 def update_clock():
