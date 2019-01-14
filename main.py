@@ -302,12 +302,6 @@ def main(config_file):
     if 'ca_certs' in mqtt_cfg:
         client.tls_set(ca_certs=mqtt_cfg['ca_certs'])
 
-    # Set the last will to publish an offline message
-    client.will_set("prisms/{}/status".format(mqtt_cfg['uname']),
-                    payload="offline",
-                    qos=1,
-                    retain=True)
-
     # Establish client connection
     while True:
         try:
@@ -327,12 +321,12 @@ def main(config_file):
             data = queue.peek(blocking=True)
             data = decode_dict(data)
             data = json.dumps(data)
-            info = client.publish("prisms/{}/data".format(mqtt_cfg['uname']), data, qos=1)
+            info = client.publish("epifi/v1/{}".format(mqtt_cfg['uname']), data, qos=1)
             info.wait_for_publish()
 
             while info.rc != 0:
                 time.sleep(10)
-                info=client.publish("prisms/{}/data".format(mqtt_cfg['uname']), data, qos=1)
+                info=client.publish("epifi/v1/{}".format(mqtt_cfg['uname']), data, qos=1)
                 info.wait_for_publish()
 
             LOGGER.info("Deleting data from queue")
@@ -352,11 +346,6 @@ def main(config_file):
 
         except msgpack.exceptions.UnpackValueError as e:
             LOGGER.exception("Unable to unpack data")
-            info=client.publish("prisms/{}/status".format(mqtt_cfg['uname']),
-                                "Bad queue",
-                                qos=1,
-                                retain=True)
-            info.wait_for_publish()
             break
 
         except Exception as e:
