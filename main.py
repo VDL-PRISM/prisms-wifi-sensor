@@ -1,4 +1,5 @@
-import argpars
+import argparse
+import base64
 from datetime import datetime
 import gzip
 import json
@@ -32,9 +33,45 @@ logging.basicConfig(level=logging.DEBUG,
 LOGGER = logging.getLogger(__name__)
 RUNNING = True
 
+try:
+    from Crypto.Cipher import AES
+    from Crypto import Random
+except:
+    LOGGER.debug("Importing package pycrypto")
+    subprocess.call([sys.executable, "-m", "pip", "uninstall", "pycrypto"])
+    subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade","pip"])
+    subprocess.call([sys.executable, "-m", "pip", "install", "pycrypto"])
+    from Crypto.Cipher import AES
+    from Crypto import Random
+    LOGGER.debug("Successfully installed and imported package pycrypto")
+
+class AESCipher(object):
+
+    def __init__(self, key,iv):
+        self.bs=16
+        self.key = key
+        self.iv=iv
+        #self.cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
+
+    def encrypt(self, raw):
+        raw = self._pad(raw)
+        cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
+        return base64.b64encode(cipher.encrypt(raw))
+
+    def decrypt(self, enc):
+        enc = base64.b64decode(enc)
+        cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
+        return self._unpad(cipher.decrypt(enc)).decode('utf-8')
+
+    def _pad(self, s):
+        return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
+
+    @staticmethod
+    def _unpad(s):
+        return s[:-ord(s[len(s)-1:])]
 
 # Read data from the sensor
-def read_data(output_sensors, input_sensors, queue):
+def read_data(output_sensors, input_sensors, queue, cipher):
     sequence_number = 0
 
     for sensor in input_sensors:
@@ -62,14 +99,22 @@ def read_data(output_sensors, input_sensors, queue):
             LOGGER.info("Getting new data from sensors")
             for sensor in output_sensors:
                 data['data'].update(sensor.read())
+            
+            # Write data to input sensors
+            for sensor in input_sensors:
+                sensor.data(data)
+
+            #encrypt data
+            data=json.dumps(data)
+            LOGGER.debug("Unencrypted data is %s ", data)
+            enc_data = cipher.encrypt(data)
+            enc_data=enc_data.decode('utf-8')
+            now=time.time()
+            data = {"data": enc_data, "timestamp":int(now*1e6)}
 
             # Save data for later
             LOGGER.debug("Pushing %s into queue", data)
             queue.push(data)
-
-            # Write data to input sensors
-            for sensor in input_sensors:
-                sensor.data(data)
 
             # Every 10 minutes, update time
             if sequence_number % 10 == 0:
@@ -284,9 +329,20 @@ def main(config_file):
     bad_queue = PersistentQueue('sensor.bad_queue',
                                 dumps=msgpack.packb,
                                 loads=msgpack.unpackb)
+    #generate key info
+    bs = 16
+    key = Random.new().read(bs)
+    IV = Random.new().read(bs)
+    mode = AES.MODE_CBC
+    cipher = AESCipher(key, IV)
+    now = time.time()
+    curr_time=int(now*1e6)
+    enc_key=base64.b64encode(key).decode('utf-8')
+    enc_iv=base64.b64encode(IV).decode('utf-8')
+    
 
     # Start reading from sensors
-    sensor_thread = Thread(target=read_data, args=(output_sensors, input_sensors, queue))
+    sensor_thread = Thread(target=read_data, args=(output_sensors, input_sensors, queue,cipher))
     sensor_thread.start()
 
     # Create mqtt client
@@ -314,6 +370,30 @@ def main(config_file):
             time.sleep(15)
     client.loop_start()
 
+    # Generate the seesion key and publish it to broker
+    try:
+        #bs = 16
+        #key = Random.new().read(bs)
+        #IV = Random.new().read(bs)
+        #mode = AES.MODE_CBC
+        #cipher = AESCipher(key, IV)
+        #curr_time = time.time()
+        #enc_key=base64.b64encode(key).decode('utf-8')
+        #enc_iv=base64.b64encode(IV).decode('utf-8')
+        key_data = {"key": enc_key,"iv": enc_iv,"mode": mode,"timestamp": curr_time}
+        key_data = json.dumps(key_data)
+        pub_info = client.publish("epifi/v2/{}/key".format(mqtt_cfg['uname']), key_data, qos=1,retain=True)
+        pub_info.wait_for_publish()
+        while pub_info.rc != 0:
+            time.sleep(10)
+            pub_info=client.publish("epifi/v2/{}/key".format(mqtt_cfg['uname']), key_data, qos=1,retain=True)
+            pub_info.wait_for_publish()
+    except Exception as e:
+        LOGGER.error("Exception- %s occurred while generating key",e)
+        exit()
+    
+    time.sleep(5)
+
     # Continuously get data from queue and publish to broker
     while True:
         try:
@@ -321,12 +401,12 @@ def main(config_file):
             data = queue.peek(blocking=True)
             data = decode_dict(data)
             data = json.dumps(data)
-            info = client.publish("epifi/v1/{}".format(mqtt_cfg['uname']), data, qos=1)
+            info = client.publish("epifi/v2/{}/data".format(mqtt_cfg['uname']), data, qos=1)
             info.wait_for_publish()
 
             while info.rc != 0:
                 time.sleep(10)
-                info=client.publish("epifi/v1/{}".format(mqtt_cfg['uname']), data, qos=1)
+                info=client.publish("epifi/v2/{}/data".format(mqtt_cfg['uname']), data, qos=1)
                 info.wait_for_publish()
 
             LOGGER.info("Deleting data from queue")
