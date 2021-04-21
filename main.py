@@ -143,7 +143,7 @@ def load_sensors(config_file):
 
 def load_sensor_files(config_file):
     with open(config_file) as f:
-        config = yaml.load(f)
+        config = yaml.safe_load(f)
 
     for component, component_configs in config['sensors'].items():
         # Make sure component_configs is a list
@@ -219,7 +219,7 @@ def main(config_file):
     # Load config file
     try:
         with open(config_file, 'r') as ymlfile:
-            cfg = yaml.load(ymlfile)
+            cfg = yaml.safe_load(ymlfile)
     except:
         LOGGER.error("Error loading config file")
         exit()
